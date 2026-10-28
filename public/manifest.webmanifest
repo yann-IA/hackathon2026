@@ -1,7 +1,7 @@
 {
   "name": "Claire — Hackathon 2026",
   "short_name": "Hackathon 2026",
-  "description": "Claire répond à vos questions sur le Hackathon 2026 : programme, règlement, infos pratiques.",
+  "description": "Claire répond à vos questions sur le Hackathon 2026 et ses 10 sujets.",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",

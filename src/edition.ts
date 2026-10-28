@@ -9,9 +9,9 @@ import type { Settings } from './settings'
 export const EDITION = {
   name: 'Claire',
   event: 'Hackathon 2026',
-  welcome: 'Bonjour, je suis Claire ! Posez-moi vos questions sur le Hackathon 2026 : programme, règlement, infos pratiques…',
+  welcome: 'Bonjour, je suis Claire ! Posez-moi vos questions sur le Hackathon 2026 et ses 10 sujets.',
   privacy: 'Vos questions sont enregistrées de façon anonyme pour améliorer les réponses : n’y indiquez pas votre nom.',
-  suggestions: ['Quel est le programme ?', 'Où et quand ça se passe ?', 'Comment former une équipe ?', 'Qu’est-ce qu’on peut gagner ?'],
+  suggestions: ['Quels sont les sujets du hackathon ?', 'C’est quoi le sujet WIFIA ?', 'Quel sujet parle des vols de cuivre ?', 'Qu’est-ce que ReUseRéseaux ?', 'Que vise le sujet EnergiPulse ?', 'Quel sujet concerne les Livebox ?'],
   thinking: 'Claire cherche dans les documents…',
 }
 

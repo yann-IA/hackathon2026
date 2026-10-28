@@ -4,3 +4,4 @@ documents/*
 !documents/LISEZMOI.txt
 models/
 kokoro/
+!documents/Sujets du Hackathon 2026.md

@@ -221,31 +221,49 @@ describe('questions sans réponse et résumé', () => {
     await rm(dir, { recursive: true, force: true })
   })
 
-  it('prépare le résumé : chiffres, analyse, questions sans réponse regroupées', async () => {
-    const q = (question, answered) => ({ date: new Date('2026-10-05T09:00:00Z'), question, answered, sources: [], answer: '' })
-    const questions = [q('Quand vote-t-on ?', true), q('quand vote t on', true), q('Qui sont les candidats ?', false), q('Qui sont les candidats ?', false), q('Combien de sièges ?', false)]
-    expect(groupQuestions(questions)[0]).toMatchObject({ text: 'Quand vote-t-on ?', count: 2 })
+  it('prépare le résumé : nouvelles questions, chiffres, analyse, questions sans réponse regroupées', async () => {
+    const q = (question, answered, h) => ({ date: new Date(2026, 10, 3, h, 30), question, answered, sources: [], answer: '' })
+    const questions = [q('Quels sont les sujets ?', true, 9), q('quels sont les sujets', true, 10), q('Qui fait partie du jury ?', false, 10), q('Qui fait partie du jury ?', false, 13), q('Où déjeuner ?', false, 14)]
+    expect(groupQuestions(questions)[0]).toMatchObject({ text: 'Quels sont les sujets ?', count: 2 })
     let prompt = ''
     const chat = async function* (_llm, messages) {
       prompt = messages[1].content
-      yield '**Thèmes abordés** : les dates du vote.'
+      yield '**Thèmes abordés** : les sujets du hackathon.'
     }
-    const r = await buildReport(questions, { from: new Date('2026-10-01T00:00:00Z'), to: new Date('2026-10-08T00:00:00Z'), llm: { contextTokens: 6144 }, chat })
-    expect(prompt).toContain('[sans réponse] Combien de sièges ?')
-    expect(r.subject).toBe('Claire : 5 questions sur Hackathon 2026 (3 sans réponse)')
+    const r = await buildReport(questions, { since: new Date(2026, 10, 3, 12, 0), to: new Date(2026, 10, 3, 17, 0), llm: { contextTokens: 6144 }, chat })
+    expect(prompt).toContain('[sans réponse] Où déjeuner ?')
+    expect(r.subject).toBe('Claire : 2 nouvelles questions (5 au total, 3 sans réponse)')
+    expect(r.text).toContain('Nouvelles questions depuis le dernier résumé (12:00) : 2, dont 2 sans réponse (✗)\n- 13:30 ✗ Qui fait partie du jury ?\n- 14:30 ✗ Où déjeuner ?')
     expect(r.text).toContain('5 questions, dont 2 avec une réponse trouvée dans les documents et 3 sans réponse.')
-    expect(r.text).toContain('Thèmes abordés : les dates du vote.')
-    expect(r.text).toContain('- (×2) Qui sont les candidats ?\n- Combien de sièges ?')
+    expect(r.text).toContain('Thèmes abordés : les sujets du hackathon.')
+    expect(r.text).toContain('- (×2) Qui fait partie du jury ?\n- Où déjeuner ?')
+    const none = await buildReport(questions, { since: new Date(2026, 10, 3, 16, 0), to: new Date(2026, 10, 3, 17, 0), llm: { contextTokens: 6144 }, chat })
+    expect(none.text).toContain('Nouvelles questions depuis le dernier résumé (16:00) : 0\n- aucune')
     const failing = await buildReport(questions, { llm: { contextTokens: 6144 }, chat: async function* () { throw new Error('Ollama arrêté') } })
     expect(failing.text).toContain('Analyse automatique indisponible : Ollama arrêté')
   })
 
-  it('calcule les échéances : chaque lundi à 8 h, ou chaque jour', () => {
+  it('calcule les échéances : 8 h, 12 h et 17 h chaque jour, ou chaque lundi', () => {
+    const daily = { schedule: 'quotidien', day: 1, hours: [8, 12, 17] }
+    expect(lastSlot(new Date(2026, 10, 3, 10, 0), daily)).toEqual(new Date(2026, 10, 3, 8, 0))
+    expect(lastSlot(new Date(2026, 10, 3, 12, 5), daily)).toEqual(new Date(2026, 10, 3, 12, 0))
+    expect(lastSlot(new Date(2026, 10, 3, 23, 0), daily)).toEqual(new Date(2026, 10, 3, 17, 0))
+    expect(lastSlot(new Date(2026, 10, 3, 7, 0), daily)).toEqual(new Date(2026, 10, 2, 17, 0))
     const now = new Date(2026, 9, 15, 10, 0) // jeudi 15 octobre, 10 h
-    expect(lastSlot(now, { schedule: 'hebdomadaire', day: 1, hour: 8 })).toEqual(new Date(2026, 9, 12, 8, 0))
-    expect(lastSlot(new Date(2026, 9, 12, 7, 0), { schedule: 'hebdomadaire', day: 1, hour: 8 })).toEqual(new Date(2026, 9, 5, 8, 0))
-    expect(lastSlot(now, { schedule: 'quotidien', day: 1, hour: 8 })).toEqual(new Date(2026, 9, 15, 8, 0))
-    expect(lastSlot(new Date(2026, 9, 15, 7, 0), { schedule: 'quotidien', day: 1, hour: 8 })).toEqual(new Date(2026, 9, 14, 8, 0))
+    expect(lastSlot(now, { schedule: 'hebdomadaire', day: 1, hours: [8] })).toEqual(new Date(2026, 9, 12, 8, 0))
+    expect(lastSlot(new Date(2026, 9, 12, 7, 0), { schedule: 'hebdomadaire', day: 1, hours: [8] })).toEqual(new Date(2026, 9, 5, 8, 0))
+  })
+
+  it('retrouve les sujets du hackathon dans leur document', async () => {
+    const dir = await mkdtemp(join(tmpdir(), 'assistante-sujets-'))
+    await writeFile(join(dir, 'Sujets du Hackathon 2026.md'), await readFile(new URL('../server/documents/Sujets du Hackathon 2026.md', import.meta.url), 'utf8'))
+    const index = new DocumentIndex({ documents: dir, dataDir: join(dir, '.data'), embed: fakeEmbed, chunkChars: 900, overlap: 150, log: quiet })
+    await index.sync()
+    for (const [question, expected] of [['C’est quoi le sujet WIFIA ?', 'qualité du Wi-Fi'], ['Quel sujet parle des vols de cuivre ?', 'vols de cuivre'], ['Que vise EnergiPulse ?', 'coupures électriques']]) {
+      const hits = await index.search(question, 4, 0)
+      expect(hits.map((h) => h.text).join('\n')).toContain(expected)
+    }
+    await rm(dir, { recursive: true, force: true })
   })
 
   it('envoie l’e-mail par SMTP (identification, destinataires, texte en UTF-8)', async () => {

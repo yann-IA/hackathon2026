@@ -41,9 +41,14 @@ export function loadConfig(overrides = {}) {
     logQuestions: env.LOG_QUESTIONS !== 'false',
     report: {
       email: env.REPORT_EMAIL || '', // destinataire(s), séparés par des virgules
-      schedule: env.REPORT_SCHEDULE || 'hebdomadaire', // hebdomadaire, quotidien ou jamais
-      day: num('REPORT_DAY', 1), // 1 = lundi … 0 = dimanche
-      hour: num('REPORT_HOUR', 8),
+      schedule: env.REPORT_SCHEDULE || 'quotidien', // quotidien, hebdomadaire ou jamais
+      day: num('REPORT_DAY', 1), // hebdomadaire : 1 = lundi … 0 = dimanche
+      // heures d'envoi, séparées par des virgules (pendant l'événement : 8 h, 12 h et 17 h)
+      hours: String(env.REPORT_HOURS || env.REPORT_HOUR || '8,12,17')
+        .split(',')
+        .map((h) => Number(h.trim()))
+        .filter((h) => Number.isInteger(h) && h >= 0 && h < 24)
+        .sort((a, b) => a - b),
     },
     smtp: {
       host: env.SMTP_HOST || 'smtp.gmail.com',

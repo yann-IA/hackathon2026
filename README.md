@@ -40,8 +40,9 @@ autre Mac. Sur un Mac sans Camille, l'adresse est simplement `https://nom-du-mac
 
 ## Les documents de l'événement
 
-Déposez les PDF dans **`server/documents`** (`open ~/Hackathon2026/server/documents`) : programme,
-règlement, plan d'accès… Ils sont indexés automatiquement quelques secondes après leur arrivée ; pour en
+Les **10 sujets du hackathon** sont déjà fournis (`server/documents/Sujets du Hackathon 2026.md`).
+Ajoutez les autres documents dans **`server/documents`** (`open ~/Hackathon2026/server/documents`) :
+programme, règlement, plan d'accès… Ils sont indexés automatiquement quelques secondes après leur arrivée ; pour en
 retirer un, supprimez le fichier. Le nom du fichier sert de titre dans les sources affichées sous chaque
 réponse. Formats lus : PDF (y compris scannés), texte, Markdown, HTML, images. Ces documents sont
 publics (consultables depuis les sources).
@@ -52,9 +53,11 @@ oriente vers l'équipe d'organisation, sans rien inventer.
 ## Questions des participants et résumé par e-mail
 
 Toutes les questions sont notées, sans rien qui identifie la personne, dans **`Questions.csv`** (Numbers
-ou Excel) : date, question, réponse trouvée ou non, sources, réponse de Claire. Chaque lundi à 8 h (ou
-chaque jour), un résumé est enregistré dans `Résumés/` et envoyé par e-mail : nombre de questions,
-thèmes et préoccupations principales, questions restées sans réponse, questions les plus posées.
+ou Excel) : date, question, réponse trouvée ou non, sources, réponse de Claire. Chaque jour à **8 h,
+12 h et 17 h**, un résumé est enregistré dans `Résumés/` et envoyé par e-mail : d'abord les **nouvelles
+questions** depuis le résumé précédent (✓ réponse trouvée, ✗ sans réponse), puis le point depuis le
+début (nombre de questions, thèmes et préoccupations principales, questions restées sans réponse,
+questions les plus posées). Heures : `REPORT_HOURS=8,12,17` dans `server/.env`.
 
 Envoi par e-mail, dans `server/.env` (Gmail : mot de passe d'application, voir
 [myaccount.google.com/apppasswords](https://myaccount.google.com/apppasswords) ; Orange :
@@ -64,12 +67,11 @@ Envoi par e-mail, dans `server/.env` (Gmail : mot de passe d'application, voir
 REPORT_EMAIL=votre.adresse@exemple.fr
 SMTP_USER=adresse.qui.envoie@gmail.com
 SMTP_PASS=abcd efgh ijkl mnop
-REPORT_SCHEDULE=quotidien
 ```
 
 ```bash
 npm run essai-mail                 # vérifie l'envoi
-npm run resume -- --tout           # résumé de toutes les questions (--envoyer pour le recevoir)
+npm run resume                     # résumé tout de suite (ajouter -- --envoyer pour le recevoir)
 ```
 
 ## Personnaliser

@@ -1,9 +1,9 @@
 #!/usr/bin/env node
 // Résumé des questions posées à l'assistante : chiffres, analyse des préoccupations par le modèle local,
-// questions restées sans réponse. Envoyé par e-mail (chaque semaine par défaut) et enregistré dans
+// questions restées sans réponse. Envoyé par e-mail (à 8 h, 12 h et 17 h par défaut) et enregistré dans
 // le dossier « Résumés ».
-//   npm run resume                    affiche le résumé des questions depuis le dernier envoi
-//   npm run resume -- --tout          … de toutes les questions
+//   npm run resume                    affiche le résumé (nouvelles questions depuis le dernier envoi)
+//   npm run resume -- --tout          … en comptant toutes les questions comme nouvelles
 //   npm run resume -- --envoyer       … et l'envoie par e-mail tout de suite
 //   npm run essai-mail                envoie un e-mail d'essai (vérifie les réglages SMTP)
 import { mkdir, readFile, writeFile } from 'node:fs/promises'
@@ -56,15 +56,26 @@ async function analyse(questions, llm, chat, a) {
   return text.replace(/\*\*|^#+\s*/gm, '').trim()
 }
 
-/** Texte complet du résumé (et son objet d'e-mail). */
-export async function buildReport(questions, { from, to = new Date(), llm, chat = streamChat, questionsFile = 'Questions.csv', assistant = { name: 'Claire', event: 'Hackathon 2026' } }) {
+const hhmm = (d) => d.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })
+const when = (d, ref) => (d.toDateString() === ref.toDateString() ? hhmm(d) : `${d.toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric' })} ${hhmm(d)}`)
+
+/**
+ * Texte complet du résumé (et son objet d'e-mail) : les nouvelles questions depuis le résumé
+ * précédent (`since`), puis le point sur toutes les questions depuis le début.
+ */
+export async function buildReport(questions, { since, to = new Date(), llm, chat = streamChat, questionsFile = 'Questions.csv', assistant = { name: 'Claire', event: 'Hackathon 2026' } }) {
   const a = assistant
-  const start = from ?? questions[0]?.date ?? to
+  const fresh = since ? questions.filter((q) => q.date > since) : questions
   const unanswered = questions.filter((q) => !q.answered)
-  const period = `du ${frDate(start)} au ${frDate(to)}`
-  const parts = [`Résumé des questions posées à ${a.name} (${a.event})\n${period}`]
+  const freshUnanswered = fresh.filter((q) => !q.answered)
+  const s = (n) => (n > 1 ? 's' : '')
+  const parts = [`Résumé des questions posées à ${a.name} (${a.event})\n${frDate(to)}, ${hhmm(to)}`]
   parts.push(
-    `En chiffres\n- ${questions.length} question${questions.length > 1 ? 's' : ''}` +
+    `Nouvelles questions${since ? ` depuis le dernier résumé (${when(since, to)})` : ''} : ${fresh.length}` +
+      (fresh.length ? `, dont ${freshUnanswered.length} sans réponse (✗)\n` + fresh.map((q) => `- ${when(q.date, to)} ${q.answered ? '✓' : '✗'} ${q.question.trim()}`).join('\n') : '\n- aucune'),
+  )
+  parts.push(
+    `Depuis le début\n- ${questions.length} question${s(questions.length)}` +
       (questions.length ? `, dont ${questions.length - unanswered.length} avec une réponse trouvée dans les documents et ${unanswered.length} sans réponse.` : '.'),
   )
   if (questions.length) {
@@ -80,19 +91,27 @@ export async function buildReport(questions, { from, to = new Date(), llm, chat 
   }
   parts.push(`Toutes les questions, avec les réponses de ${a.name}, sont dans le fichier ${questionsFile} sur le Mac.`)
   return {
-    subject: `${a.name} : ${questions.length} question${questions.length > 1 ? 's' : ''} sur ${a.event} (${unanswered.length} sans réponse)`,
+    subject: `${a.name} : ${fresh.length} nouvelle${s(fresh.length)} question${s(fresh.length)} (${questions.length} au total, ${unanswered.length} sans réponse)`,
     text: parts.join('\n\n') + '\n',
   }
 }
 
-/** Dernière échéance d'envoi passée (heure du Mac) : chaque jour ou chaque semaine à heure fixe. */
-export function lastSlot(now, { schedule, day, hour }) {
-  const d = new Date(now)
-  d.setHours(hour, 0, 0, 0)
-  if (schedule === 'quotidien') {
-    if (d > now) d.setDate(d.getDate() - 1)
-    return d
+/** Dernière échéance d'envoi passée (heure du Mac) : chaque jour aux heures prévues, ou chaque semaine. */
+export function lastSlot(now, { schedule, day, hours = [8] }) {
+  const hs = hours.length ? hours : [8]
+  const at = (d, h) => {
+    const x = new Date(d)
+    x.setHours(h, 0, 0, 0)
+    return x
   }
+  if (schedule === 'quotidien') {
+    const today = hs.map((h) => at(now, h)).filter((d) => d <= now)
+    if (today.length) return today.at(-1)
+    const y = new Date(now)
+    y.setDate(y.getDate() - 1)
+    return at(y, hs.at(-1))
+  }
+  const d = at(now, hs[0])
   d.setDate(d.getDate() - ((d.getDay() - day + 7) % 7)) // day : 1 = lundi … 0 = dimanche
   if (d > now) d.setDate(d.getDate() - 7)
   return d
@@ -112,10 +131,10 @@ const mailReady = (cfg) => Boolean(cfg.report.email && cfg.smtp.user && cfg.smtp
 
 /** Prépare le résumé, l'enregistre dans le dossier Résumés et l'envoie si l'e-mail est configuré. */
 export async function runReport(cfg, { since, now = new Date(), send = true, chat = streamChat, log = console } = {}) {
-  const questions = await new QuestionLog(cfg.questionsFile).read(since)
-  const report = await buildReport(questions, { from: since, to: now, llm: cfg.llm, chat, questionsFile: cfg.questionsFile, assistant: cfg.assistant })
+  const questions = await new QuestionLog(cfg.questionsFile).read()
+  const report = await buildReport(questions, { since, to: now, llm: cfg.llm, chat, questionsFile: cfg.questionsFile, assistant: cfg.assistant })
   await mkdir(cfg.reportsDir, { recursive: true })
-  const file = join(cfg.reportsDir, `Résumé ${isoDay(now)}.txt`)
+  const file = join(cfg.reportsDir, `Résumé ${isoDay(now)} ${String(now.getHours()).padStart(2, '0')}h${String(now.getMinutes()).padStart(2, '0')}.txt`)
   await writeFile(file, report.text)
   let sent = false
   if (send && mailReady(cfg)) {
@@ -126,7 +145,7 @@ export async function runReport(cfg, { since, now = new Date(), send = true, cha
   return { ...report, file, sent, count: questions.length }
 }
 
-/** Envoi automatique : vérifie toutes les 10 minutes si une échéance est passée depuis le dernier résumé. */
+/** Envoi automatique : vérifie toutes les 5 minutes si une échéance est passée depuis le dernier résumé. */
 export function scheduleReports(cfg, { log = console, chat = streamChat } = {}) {
   if (cfg.report.schedule === 'jamais') return null
   const tick = async () => {
@@ -140,11 +159,11 @@ export function scheduleReports(cfg, { log = console, chat = streamChat } = {}) 
       await writeState(cfg, { last: now.toISOString() })
       if (!r.sent) log.info(`Résumé enregistré : ${r.file}${mailReady(cfg) ? '' : ' (e-mail non configuré)'}`)
     } catch (e) {
-      log.warn(`Résumé des questions impossible : ${e.message} (nouvel essai dans 10 minutes)`)
+      log.warn(`Résumé des questions impossible : ${e.message} (nouvel essai dans 5 minutes)`)
     }
   }
   void tick()
-  return setInterval(tick, 10 * 60_000)
+  return setInterval(tick, 5 * 60_000)
 }
 
 const isMain = (() => {
