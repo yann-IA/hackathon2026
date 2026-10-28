@@ -340,3 +340,24 @@ describe('questions d’exemple tirées des documents', () => {
     await rm(dir, { recursive: true, force: true })
   })
 })
+
+describe('vue d’ensemble toujours fournie', () => {
+  it('fournit toujours la liste des sujets, même si la recherche ne la trouve pas', async () => {
+    const dir = await mkdtemp(join(tmpdir(), 'assistante-pin-'))
+    await writeFile(join(dir, 'Sujets du Hackathon 2026.md'), await readFile(new URL('../server/documents/Sujets du Hackathon 2026.md', import.meta.url), 'utf8'))
+    await writeFile(join(dir, 'Guide.txt'), 'S’approprier le sujet : chaque équipe découvre son sujet avec son DIAM, sujet #1 et sujet #5.')
+    const index = new DocumentIndex({ documents: dir, dataDir: join(dir, '.data'), embed: fakeEmbed, chunkChars: 900, overlap: 150, log: quiet })
+    await index.sync()
+    const pinned = index.pinned(['Sujets du Hackathon 2026.md', 'absent.md'])
+    const text = pinned.map((p) => p.text).join('\n')
+    for (const s of ['WIFIA', 'Loi de Finances', 'Livebox', 'cuivre', 'Formations métier', 'ReUseRéseaux', 'catalogue de données', 'EnergiPulse', 'vente augmentée', 'Qualification des offres']) expect(text).toContain(s)
+    expect(pinned.every((p) => p.pinned && p.title === 'Sujets du Hackathon 2026')).toBe(true)
+    expect(index.pinned(['Sujets du Hackathon 2026.md'], 500).length).toBeLessThan(pinned.length) // plafond de taille
+    // après un redémarrage, le titre compte toujours dans les mots-clés ; pluriel = singulier
+    const again = new DocumentIndex({ documents: dir, dataDir: join(dir, '.data'), embed: fakeEmbed, log: quiet })
+    await again.load()
+    expect([...again.docs['Sujets du Hackathon 2026.md'].chunks[0].words]).toContain('sujet')
+    expect(keywords('Quels sont les sujets ?')).toEqual(keywords('quel sujet'))
+    await rm(dir, { recursive: true, force: true })
+  })
+})

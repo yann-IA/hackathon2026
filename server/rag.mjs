@@ -55,16 +55,17 @@ const normalize = (v) => {
   return v.map((x) => x / n)
 }
 
-/** Mots significatifs (sans accents, plus de 2 lettres) : sert de bonus « mots-clés ». */
+/** Mots significatifs (sans accents, plus de 2 lettres, au singulier) : sert de bonus « mots-clés ». */
 export function keywords(text) {
-  const STOP = new Set(['les', 'des', 'une', 'est', 'que', 'qui', 'pour', 'dans', 'par', 'sur', 'avec', 'pas', 'plus', 'son', 'ses', 'aux', 'mais', 'comment', 'quand', 'quel', 'quelle', 'quels', 'quelles', 'cette', 'ces', 'vous', 'nous', 'elle', 'ils', 'tout', 'tous', 'etre', 'avoir', 'fait', 'faire', 'peut', 'peux', 'est-ce'])
+  const STOP = new Set(['les', 'des', 'une', 'est', 'que', 'qui', 'pour', 'dans', 'par', 'sur', 'avec', 'pas', 'plus', 'son', 'ses', 'aux', 'mais', 'comment', 'quand', 'quel', 'quelle', 'quels', 'quelles', 'cette', 'ces', 'vous', 'nous', 'elle', 'ils', 'tout', 'tous', 'etre', 'avoir', 'fait', 'faire', 'peut', 'peux', 'est-ce', 'sont', 'ont', 'quoi', 'faut', 'leur', 'leurs', 'mon', 'mes', 'ton', 'tes'])
   return new Set(
     text
       .toLowerCase()
       .normalize('NFD')
       .replace(/[̀-ͯ]/g, '')
       .split(/[^a-z0-9]+/)
-      .filter((w) => w.length > 2 && !STOP.has(w)),
+      .filter((w) => w.length > 2 && !STOP.has(w))
+      .map((w) => (w.length > 3 ? w.replace(/(?<=[^s])[sx]$/, '') : w)), // « sujets » = « sujet »
   )
 }
 
@@ -101,7 +102,8 @@ export class DocumentIndex {
     } catch {
       this.docs = {}
     }
-    for (const d of Object.values(this.docs)) for (const c of d.chunks) c.words = keywords(c.text)
+    // comme à l'indexation : le titre du document compte dans les mots-clés de chaque passage
+    for (const d of Object.values(this.docs)) for (const c of d.chunks) c.words = keywords(`${d.title} ${c.text}`)
   }
 
   async save() {
@@ -161,6 +163,25 @@ export class DocumentIndex {
     }
     if (changed) await this.save()
     return changed
+  }
+
+  /**
+   * Documents fournis au modèle à chaque question (ex. la liste des sujets) : tous leurs passages,
+   * dans l'ordre, jusqu'à `maxChars` caractères.
+   */
+  pinned(files, maxChars = 3500) {
+    const out = []
+    let total = 0
+    for (const file of files) {
+      const d = this.docs[file]
+      if (!d) continue
+      for (const c of d.chunks) {
+        if (total + c.text.length > maxChars) return out
+        out.push({ file, title: d.title, page: c.page, text: c.text, pinned: true })
+        total += c.text.length
+      }
+    }
+    return out
   }
 
   /**

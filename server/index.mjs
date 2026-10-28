@@ -96,14 +96,19 @@ export async function createAssistantServer(overrides = {}, { log = console } = 
         return
       }
       event({ edition: { queue: 0 } })
-      let passages = []
+      let found = []
       try {
-        passages = await index.search(query, cfg.rag.topK, cfg.rag.minScore)
+        found = await index.search(query, cfg.rag.topK, cfg.rag.minScore)
       } catch (e) {
         log.warn(`Recherche documentaire impossible : ${e.message}`)
       }
+      // documents toujours fournis (vue d'ensemble) d'abord, puis les passages trouvés
+      const pinned = index.pinned(cfg.rag.always)
+      const passages = [...pinned, ...found.filter((p) => !cfg.rag.always.includes(p.file))]
       const seen = new Set()
-      const sources = passages.filter((p) => !seen.has(p.file) && seen.add(p.file)).map((p) => ({ title: p.title, page: p.page, ...(cfg.docsDownload ? { file: p.file, url: `/docs/${encodeURIComponent(p.file)}` } : {}) }))
+      // sources affichées : celles trouvées par la recherche (un document toujours fourni n'y figure
+      // que s'il a aussi été trouvé, sinon il apparaîtrait sous chaque réponse)
+      const sources = found.filter((p) => !seen.has(p.file) && seen.add(p.file)).map((p) => ({ title: p.title, page: p.page, ...(cfg.docsDownload ? { file: p.file, url: `/docs/${encodeURIComponent(p.file)}` } : {}) }))
       event({ edition: { sources } })
       const messages = buildMessages(body.messages, passages, cfg.limits, cfg.assistant)
       if (!messages) {

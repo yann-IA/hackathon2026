@@ -104,6 +104,12 @@ export function loadConfig(overrides = {}) {
       chunkChars: num('RAG_CHUNK_CHARS', 900),
       overlap: num('RAG_OVERLAP', 150),
       minScore: num('RAG_MIN_SCORE', 0.3),
+      // documents toujours fournis au modèle, quelle que soit la question (noms de fichiers, séparés
+      // par des virgules) : la vue d'ensemble que l'assistante doit toujours connaître
+      always: String(env.RAG_ALWAYS ?? 'Sujets du Hackathon 2026.md')
+        .split(',')
+        .map((f) => f.trim())
+        .filter(Boolean),
     },
   }
 }
