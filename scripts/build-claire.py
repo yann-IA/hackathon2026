@@ -4,13 +4,13 @@ Génère l'avatar « Claire » (public/avatars/claire.vrm) à partir du modèle 
 (public/avatars/default.vrm, licence VRM 1.0 : modification et redistribution autorisées,
 usage commercial autorisé).
 
-Claire : femme d'une trentaine d'années, environ 1,70 m, cheveux blonds, yeux bleu-gris, chemise noire
-à manches longues avec le logo Orange à droite (vu de face), pantalon noir.
+Claire : femme d'une trentaine d'années, environ 1,70 m, cheveux blonds, yeux bleu-gris, t-shirt noir
+à manches courtes avec le logo du Hackathon 2026 sur la poitrine, pantalon noir.
 
 - cheveux et sourcils recolorés en blond (le relief des mèches est conservé) ;
-- chemise : le t-shirt d'origine devient noir (plis conservés, texture doublée pour un logo net),
-  avec col, patte de boutonnage et boutons projetés sur le maillage (ils suivent la courbure du
-  buste), et des manches longues (bras « habillés » jusqu'aux poignets, avec revers) ;
+- t-shirt : le t-shirt d'origine devient noir (plis conservés, texture doublée pour un logo net), bras
+  nus ; logo du hackathon (scripts/assets/hackathon-logo.jpg) projeté sur le maillage au milieu de la
+  poitrine : son fond noir se confond avec le tissu, seules les formes colorées ressortent ;
 - pantalon d'un seul tenant : le short est retiré, jambes et bassin sont habillés (texture peinte
   d'après les os, volume du tissu en coupe droite) ;
 - silhouette adulte : jambes, buste et bras allongés, tête un peu plus petite, yeux moins grands ;
@@ -24,50 +24,25 @@ import struct
 from pathlib import Path
 
 import numpy as np
-from PIL import Image, ImageDraw, ImageFilter, ImageFont
+from PIL import Image
 
 from vroid_kit import *  # noqa: F401,F403
 from vroid_kit import ROOT, SRC
 
 OUT = ROOT / 'public' / 'avatars' / 'claire.vrm'
 
-ORANGE = (255, 121, 0)  # orange de la marque (#FF7900)
-# Teinte des manches longues (peintes sur la peau) : plus claire que le tissu de la chemise car le
-# matériau de la peau s'éclaire moins ; mesurée sur un rendu pour que les deux se confondent.
-SHIRT = (46, 46, 55)
-LOGO_SIZE = 0.046  # côté du logo, en mètres
-# Côté du logo : +1 = à droite vu de face (côté cœur de la personne), -1 = de l'autre côté.
-LOGO_SIDE = 1
+LOGO = ROOT / 'scripts' / 'assets' / 'hackathon-logo.jpg'
+LOGO_WIDTH = 0.15  # largeur du logo sur la poitrine, en mètres
 
 
-def logo_image(px=1024):
-    """Logo Orange : carré orange, mot « orange » en blanc en bas à gauche, ™."""
-    img = Image.new('RGB', (px, px), ORANGE)
-    d = ImageDraw.Draw(img)
-    font_path = '/usr/share/fonts/truetype/liberation/LiberationSans-Bold.ttf'
-    size = int(px * 0.215)
-    font = ImageFont.truetype(font_path, size)
-    text = 'orange'
-    # largeur cible : ~84 % du carré, comme sur le logo officiel
-    while d.textlength(text, font=font) < px * 0.84:
-        size += 2
-        font = ImageFont.truetype(font_path, size)
-    while d.textlength(text, font=font) > px * 0.84:
-        size -= 1
-        font = ImageFont.truetype(font_path, size)
-    x = px * 0.055
-    bbox = d.textbbox((0, 0), text, font=font)  # base de « orange » (sans le jambage du g) à ~92 %
-    xh = d.textbbox((0, 0), 'o', font=font)
-    baseline = px * 0.918
-    d.text((x, baseline - xh[3]), text, font=font, fill='white')
-    tm = ImageFont.truetype(font_path, int(px * 0.075))
-    d.text((px * 0.865, px * 0.72), '™', font=tm, fill='white')
-    return img
-
-
-def logo_rgba():
-    img = np.asarray(logo_image(), np.float32)
-    return np.concatenate([img, np.full(img.shape[:2] + (1,), 255, np.float32)], -1)
+def logo_rgba(px=1024):
+    """Logo du hackathon agrandi ; le noir du fond devient transparent (le t-shirt est noir), avec un
+    fondu pour que les bords des formes restent nets sans liseré."""
+    img = Image.open(LOGO).convert('RGB')
+    img = img.resize((px, round(px * img.height / img.width)), Image.LANCZOS)
+    a = np.asarray(img, np.float32)
+    alpha = np.clip((a.max(-1) - 28) / 36, 0, 1) * 255
+    return np.concatenate([a, alpha[..., None]], -1)
 
 
 # --------------------------------------------------------------------------- build
@@ -99,19 +74,17 @@ def main():
         if m['name'] == 'FaceBrow_00_FACE':
             pass
 
-    # --- chemise noire : col, patte de boutonnage, manches longues, logo
+    # --- t-shirt noir à manches courtes, logo du hackathon sur la poitrine
     i_top, top = glb.image('Tops_01')
     top = black_fabric(top, dark=(16, 16, 19), light=(46, 46, 53)).resize((top.width * 2, top.height * 2), Image.LANCZOS)
     tops = primitive(glb, 'Body', 'Tops_01_CLOTH')
     tp = tops['pos']
     front = tp[:, 2] > 0
     neck_front = tp[front & (np.abs(tp[:, 0]) < 0.012), 1].max()  # bas de l'encolure, devant
-    neck_side = tp[front & (np.abs(np.abs(tp[:, 0]) - 0.055) < 0.012), 1].max()
     hem_y = tp[:, 1].min()
-    top = paint_shirt_front(top, tops, neck_front, neck_side, hem_y)
-    # logo à droite vu de face, à la place d'une poche de poitrine
-    shoulder_x = abs(wp[hb['leftUpperArm']][0])
-    top = project_decal(top, tops, LOGO_SIDE * shoulder_x * 0.62, neck_front - 0.105, LOGO_SIZE, LOGO_SIZE, logo_rgba(), soft=0.8)
+    logo = logo_rgba()
+    h = LOGO_WIDTH * logo.shape[0] / logo.shape[1]
+    top = project_decal(top, tops, 0.0, neck_front - 0.03 - h / 2, LOGO_WIDTH, h, logo, n=32, soft=0.8)
     glb.set_image(i_top, top)
     for m in j['materials']:
         if m['name'] == 'Tops_01_CLOTH':
@@ -125,10 +98,8 @@ def main():
     # --- plus de short : un seul pantalon, de la taille aux chevilles
     remove_primitive(glb, 'Body', 'Bottoms_01_CLOTH')
 
-    # --- peau habillée : pantalon (jambes et bassin), manches longues jusqu'aux poignets
-    s = SHIRT
-    dress_body(glb, wp, hb, tp, hem_y, legs=(30, 30, 35), legs_shade=(17, 17, 20), sleeves=s, sleeves_shade=[c * 0.62 for c in s],
-               cuff=[c + 6 for c in s], cuff_line=[c + 30 for c in s], cuff_line_shade=[(c + 20) * 0.62 for c in s])
+    # --- peau habillée : pantalon (jambes et bassin) ; bras nus
+    dress_body(glb, wp, hb, tp, hem_y, legs=(30, 30, 35), legs_shade=(17, 17, 20))
 
     # --- visage plus adulte : yeux un peu moins grands, surtout en hauteur
     mature_eyes(glb, sx=0.9, sy=0.84)
