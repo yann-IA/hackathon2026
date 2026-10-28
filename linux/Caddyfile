@@ -1,0 +1,8 @@
+# Exemple de proxy inverse Caddy pour Claire : certificat HTTPS automatique (Let's Encrypt) si le
+# nom est public, ou « tls /chemin/cert.pem /chemin/cle.pem » pour un certificat de l'entreprise.
+hackathon.exemple.fr {
+	reverse_proxy 127.0.0.1:8090 {
+		flush_interval -1   # réponses en flux, sans mise en tampon
+		header_up X-Forwarded-For {remote_host}
+	}
+}

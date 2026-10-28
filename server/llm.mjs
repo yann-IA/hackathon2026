@@ -22,7 +22,7 @@ export async function* streamChat(cfg, messages, signal) {
   if (cfg.api === 'openai') {
     const res = await fetch(`${base}/v1/chat/completions`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', ...(cfg.apiKey ? { Authorization: `Bearer ${cfg.apiKey}` } : {}) },
       signal,
       body: JSON.stringify({ model: cfg.model, messages, stream: true, temperature: cfg.temperature, max_tokens: cfg.maxTokens }),
     })

@@ -42,6 +42,10 @@ nom : `TS_NAME=autre-nom bash mac/acces-public.sh`.
 pour Camille sont partagés ; seul le serveur de Claire est ajouté (port 8090), et l'adresse de Camille
 ne change pas.
 
+**Sur un serveur Linux** (plus puissant, avec carte graphique) : voir
+[docs/INSTALLATION-SERVEUR-LINUX.md](docs/INSTALLATION-SERVEUR-LINUX.md), à transmettre à
+l'administrateur du serveur (script `linux/installer.sh`).
+
 ## Les documents de l'événement
 
 Les **10 sujets du hackathon** sont déjà fournis (`server/documents/Sujets du Hackathon 2026.md`).

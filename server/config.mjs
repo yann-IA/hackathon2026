@@ -55,7 +55,8 @@ export function loadConfig(overrides = {}) {
     smtp: {
       host: env.SMTP_HOST || 'smtp.gmail.com',
       port: num('SMTP_PORT', 465),
-      security: env.SMTP_SECURITY || (num('SMTP_PORT', 465) === 587 ? 'starttls' : 'ssl'),
+      // ssl (465), starttls (587) ou aucune (relais interne sur le port 25)
+      security: env.SMTP_SECURITY || { 465: 'ssl', 587: 'starttls' }[num('SMTP_PORT', 465)] || 'aucune',
       user: env.SMTP_USER || '',
       // mot de passe d'application Gmail : affiché par groupes de 4 lettres, les espaces sont retirés
       pass: (env.SMTP_PASS || '').replace(/\s+/g, ''),
@@ -66,6 +67,7 @@ export function loadConfig(overrides = {}) {
       api: env.LLM_API || 'ollama',
       url: llmUrl,
       model: env.LLM_MODEL || 'mistral-nemo',
+      apiKey: env.LLM_API_KEY || '', // serveur compatible OpenAI protégé par une clé (vLLM --api-key…)
       temperature: num('LLM_TEMPERATURE', 0.2), // bas : réponses fidèles aux documents
       maxTokens: num('LLM_MAX_TOKENS', 450),
       contextTokens: num('LLM_CONTEXT', 6144),

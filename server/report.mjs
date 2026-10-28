@@ -37,7 +37,7 @@ const line = (g) => `- ${g.count > 1 ? `(×${g.count}) ` : ''}${g.text}`
 /** Analyse des thèmes et des préoccupations par le modèle de langue (texte simple). */
 async function analyse(questions, llm, chat, a) {
   const list = questions
-    .slice(-400)
+    .slice(-150) // les plus récentes : la liste tient dans le contexte du modèle
     .map((q) => `- ${q.answered ? '' : '[sans réponse] '}${q.question.slice(0, 200).replace(/\s+/g, ' ')}`)
     .join('\n')
   const messages = [
@@ -52,7 +52,9 @@ async function analyse(questions, llm, chat, a) {
     },
   ]
   let text = ''
-  for await (const piece of chat({ ...llm, temperature: 0.2, maxTokens: 900, contextTokens: Math.max(llm.contextTokens, 8192) }, messages)) text += piece
+  // même taille de contexte que les réponses aux visiteurs : en changer obligerait Ollama à recharger
+  // le modèle (plusieurs secondes d'attente pour la question suivante)
+  for await (const piece of chat({ ...llm, temperature: 0.2, maxTokens: 900 }, messages)) text += piece
   return text.replace(/\*\*|^#+\s*/gm, '').trim()
 }
 
@@ -127,7 +129,8 @@ async function readState(cfg) {
 }
 const writeState = async (cfg, state) => (await mkdir(cfg.dataDir, { recursive: true }), writeFile(statePath(cfg), JSON.stringify(state)))
 
-const mailReady = (cfg) => Boolean(cfg.report.email && cfg.smtp.user && cfg.smtp.pass)
+// identifiant facultatif : un relais SMTP d'entreprise accepte souvent les envois sans identification
+const mailReady = (cfg) => Boolean(cfg.report.email && cfg.smtp.host && (!cfg.smtp.user || cfg.smtp.pass))
 
 /** Prépare le résumé, l'enregistre dans le dossier Résumés et l'envoie si l'e-mail est configuré. */
 export async function runReport(cfg, { since, now = new Date(), send = true, chat = streamChat, log = console } = {}) {
@@ -178,7 +181,7 @@ if (isMain) {
   const args = process.argv.slice(2)
   try {
     if (args.includes('--essai-mail')) {
-      if (!mailReady(cfg)) throw new Error('renseigne REPORT_EMAIL, SMTP_USER et SMTP_PASS dans server/.env')
+      if (!mailReady(cfg)) throw new Error('renseigne REPORT_EMAIL (et SMTP_HOST, SMTP_USER, SMTP_PASS si besoin) dans server/.env')
       await sendMail({ ...cfg.smtp, fromName: `${cfg.assistant.name} (${cfg.assistant.event})`, to: cfg.report.email, subject: `${cfg.assistant.name} : e-mail d’essai`, text: 'Les résumés des questions des participants arriveront à cette adresse.\n' })
       console.info(`E-mail d'essai envoyé à ${cfg.report.email}.`)
     } else {
@@ -189,7 +192,7 @@ if (isMain) {
       console.info(r.text)
       console.info(`Enregistré dans : ${r.file}`)
       if (args.includes('--envoyer')) {
-        if (!r.sent) console.warn("E-mail non envoyé : renseigne REPORT_EMAIL, SMTP_USER et SMTP_PASS dans server/.env")
+        if (!r.sent) console.warn("E-mail non envoyé : renseigne REPORT_EMAIL (et SMTP_HOST, SMTP_USER, SMTP_PASS si besoin) dans server/.env")
         else await writeState(cfg, { last: now.toISOString() })
       }
     }
