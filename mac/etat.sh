@@ -17,7 +17,13 @@ echo
 echo "Modèles chargés :"
 curl -fs -m 5 http://127.0.0.1:11434/api/ps | grep -o '"name":"[^"]*"' | sed 's/"name":"/  /; s/"$//' || true
 echo
-TS="$(command -v tailscale || echo /Applications/Tailscale.app/Contents/MacOS/Tailscale)"
-if [[ -x "$TS" ]]; then echo "Accès public :"; "$TS" funnel status 2>/dev/null | sed 's/^/  /'; fi
+# connexion Tailscale réservée à Claire (voir mac/acces-public.sh)
+TS="$(brew --prefix tailscale 2>/dev/null)/bin/tailscale"
+echo "Accès public :"
+if [[ -x "$TS" ]] && "$TS" --socket="$HOME/.hackathon2026-tailscale/tailscaled.sock" funnel status >/dev/null 2>&1; then
+  "$TS" --socket="$HOME/.hackathon2026-tailscale/tailscaled.sock" funnel status 2>/dev/null | sed 's/^/  /'
+else
+  echo "  pas encore configuré : bash mac/acces-public.sh"
+fi
 echo
 echo "Journaux : $HOME/Library/Logs/Hackathon2026   (documents : $ROOT/server/documents)"

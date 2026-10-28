@@ -1,5 +1,6 @@
 data/
 .env
+.env.nouveau
 documents/*
 !documents/LISEZMOI.txt
 models/

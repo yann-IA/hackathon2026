@@ -6,7 +6,8 @@
 #   - le serveur de Claire (port 8090), qui sert l'application et répond aux questions.
 # Chaque service démarre à l'ouverture de session et redémarre tout seul s'il s'arrête.
 # Sur un Mac où Camille (édition CGT) est déjà installée, Ollama, la voix et l'écoute sont partagés :
-# seul le serveur de Claire est ajouté, et son adresse publique se termine par « :8443 ».
+# seul le serveur de Claire est ajouté. Claire a sa propre adresse publique, https://hackathon.….ts.net
+# (voir mac/acces-public.sh).
 #
 # Usage (depuis le dossier du projet) :  bash mac/installer.sh
 # On peut le relancer sans risque : ce qui est déjà installé est conservé.
@@ -155,23 +156,8 @@ warn "Pour que tout reparte après un redémarrage, active l'ouverture de sessio
 warn "Réglages Système > Utilisateurs et groupes > « Se connecter automatiquement en tant que… »"
 
 # ---------------------------------------------------------- accès depuis l'extérieur
-say "Accès public (Tailscale Funnel)"
-TS="$(command -v tailscale || true)"
-[[ -z "$TS" && -x /Applications/Tailscale.app/Contents/MacOS/Tailscale ]] && TS=/Applications/Tailscale.app/Contents/MacOS/Tailscale
-if [[ -z "$TS" ]]; then
-  warn "Tailscale n'est pas installé. Installe-le (brew install --cask tailscale), ouvre-le et connecte-toi,"
-  warn "puis relance ce script."
-else
-  # l'adresse sans numéro de port (443) sert peut-être déjà à Camille : on prend alors 8443
-  if [[ -z "${FUNNEL_PORT:-}" ]]; then
-    if "$TS" funnel status 2>/dev/null | grep -q "127.0.0.1:8080"; then FUNNEL_PORT=8443; else FUNNEL_PORT=443; fi
-  fi
-  if "$TS" funnel --bg --https="$FUNNEL_PORT" "$PORT"; then
-    ok "Claire est accessible depuis Internet : adresse en https://…ts.net$([[ $FUNNEL_PORT == 443 ]] || echo ":$FUNNEL_PORT") (affichée ci-dessus)"
-  else
-    warn "Funnel n'a pas pu démarrer : autorise-le dans la console Tailscale (lien affiché ci-dessus), puis relance."
-  fi
-fi
+# Claire a sa propre adresse (https://hackathon.….ts.net), distincte de celle de Camille
+bash "$ROOT/mac/acces-public.sh" || warn "accès public à terminer : bash mac/acces-public.sh"
 
 say "Terminé"
 echo "  • Sur ce Mac :          http://127.0.0.1:$PORT"

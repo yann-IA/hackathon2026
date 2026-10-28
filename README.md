@@ -32,11 +32,15 @@ L'installation construit l'application, installe les services (qui démarrent to
 s'ils s'arrêtent), télécharge les modèles et ouvre l'accès public. `bash mac/etat.sh` vérifie à tout
 moment que tout fonctionne et rappelle l'adresse publique.
 
+**Adresse publique** : Claire a sa propre adresse, **`https://hackathon.tail1234.ts.net`** (le milieu
+dépend de votre compte Tailscale). `mac/acces-public.sh` (lancé par l'installation) fait tourner pour
+cela une seconde connexion Tailscale nommée « hackathon », qui apparaît comme une machine de plus dans
+la console Tailscale ; la première fois, un lien de connexion s'affiche : ouvrez-le et validez. Autre
+nom : `TS_NAME=autre-nom bash mac/acces-public.sh`.
+
 **Sur le Mac de Camille** : les deux éditions cohabitent. Ollama, la voix et l'écoute déjà installés
-pour Camille sont partagés ; seul le serveur de Claire est ajouté (port 8090). L'adresse publique de
-Claire est alors celle de Camille suivie de `:8443`, par exemple `https://cgt.tail1234.ts.net:8443`.
-Pour une adresse distincte, renommez la machine dans la console Tailscale ou installez Claire sur un
-autre Mac. Sur un Mac sans Camille, l'adresse est simplement `https://nom-du-mac.tail1234.ts.net`.
+pour Camille sont partagés ; seul le serveur de Claire est ajouté (port 8090), et l'adresse de Camille
+ne change pas.
 
 ## Les documents de l'événement
 
