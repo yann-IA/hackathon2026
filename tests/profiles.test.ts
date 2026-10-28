@@ -65,4 +65,15 @@ describe('pickVoice', () => {
     expect(pickVoice([{ name: 'Thomas', lang: 'fr_FR' }], 'fr-FR', 'male')?.name).toBe('Thomas')
     expect(pickVoice([], 'fr-FR', 'any')).toBeNull()
   })
+  it('sur Mac, préfère une voix féminine d’une autre région à Thomas', () => {
+    const mac = [
+      { name: 'Thomas', lang: 'fr-FR' },
+      { name: 'Jacques', lang: 'fr-FR' },
+      { name: 'Flo (français (France))', lang: 'fr-FR' },
+      { name: 'Amélie', lang: 'fr-CA' },
+    ]
+    expect(pickVoice(mac, 'fr-FR', 'female')?.name).toBe('Amélie')
+    expect(pickVoice(mac.slice(0, 3), 'fr-FR', 'female')?.name).toMatch(/^Flo/)
+    expect(pickVoice([...mac, { name: 'Audrey (Premium)', lang: 'fr-FR' }], 'fr-FR', 'female')?.name).toBe('Audrey (Premium)')
+  })
 })

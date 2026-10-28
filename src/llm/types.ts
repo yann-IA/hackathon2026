@@ -8,6 +8,8 @@ export interface ChatRequest {
   messages: ChatMessage[]
   signal: AbortSignal
   onText: (delta: string) => void
+  /** Informations du serveur de l'édition : position dans la file d'attente, sources. */
+  onMeta?: (meta: Record<string, unknown>) => void
 }
 
 export interface LLMClient {

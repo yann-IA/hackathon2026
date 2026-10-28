@@ -17,6 +17,8 @@ export interface ConversationEvents {
   /** L'IA a demandé un geste (identifiant d'animation). */
   onGesture(id: string): void
   onMouth(driver: MouthDriver | null): void
+  /** Informations du serveur (édition événement) : file d'attente, sources de la réponse. */
+  onMeta?(meta: Record<string, unknown>): void
   onMicLevel(level: number): void
   onError(message: string): void
 }
@@ -171,6 +173,7 @@ export class Conversation {
         messages: this.history,
         signal: this.abort.signal,
         onText: (d) => chunker.push(d),
+        onMeta: (m) => turn === this.turn && this.ev.onMeta?.(m),
       })
       if (turn !== this.turn) return
       chunker.flush()

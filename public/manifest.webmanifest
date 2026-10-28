@@ -1,7 +1,7 @@
 {
-  "name": "Compagnon IA",
-  "short_name": "Compagnon",
-  "description": "Discute à voix haute avec une IA incarnée par un avatar 3D.",
+  "name": "Claire — Hackathon 2026",
+  "short_name": "Hackathon 2026",
+  "description": "Claire répond à vos questions sur le Hackathon 2026 : programme, règlement, infos pratiques.",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
@@ -9,6 +9,11 @@
   "background_color": "#1b1d2e",
   "theme_color": "#1b1d2e",
   "icons": [
-    { "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+    {
+      "src": "icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
   ]
 }

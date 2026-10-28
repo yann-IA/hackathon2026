@@ -1,371 +1,105 @@
-# Compagnon IA en réalité augmentée — Avatar 3D XR
+# Claire — Hackathon 2026
 
-Fork de [Avatar3D](https://github.com/yann-IA/Avatar3D) pour casque **Meta Quest 3** : l'avatar apparaît
-**en taille réelle, debout dans ta pièce**, grâce à la réalité augmentée (passthrough). Tu le places où tu veux
-et tu discutes avec lui à voix haute. Il **articule**, **cligne des yeux**, **te regarde**, **respire**, fait des
-**gestes** et change d'**expression** selon l'émotion de chaque phrase.
+Claire est une assistante en 3D qui accueille les participants et les visiteurs du Hackathon 2026. Elle
+répond, à la voix ou par écrit, à leurs questions sur l'événement (programme, horaires, lieux,
+règlement, équipes, jury et prix, infos pratiques) à partir des documents que vous déposez sur le Mac
+(RAG). On y accède depuis son téléphone en scannant un QR code : rien à installer, aucun compte,
+aucune clé.
 
-Tout le reste du projet d'origine fonctionne toujours, sur PC et téléphone : voix, IA au choix, avatars,
-gestes, mémoire à long terme.
+Ce dépôt est une copie d'[Avatar-3D-XR](https://github.com/yann-IA/Avatar-3D-XR) dédiée à l'événement :
+une seule avatar (Claire), pas de réglages pour les visiteurs, un accueil « kiosque » qui fait défiler
+des questions suggérées, et un serveur (`server/`) qui fait tout le travail sur le Mac, sans API payante :
 
-## Réalité augmentée sur Quest 3
-
-1. Sur le Quest 3, ouvre le **navigateur Meta Quest** et va à l'adresse de l'application
-   (👉 **https://yann-ia.github.io/Avatar-3D-XR/** une fois la publication activée, voir plus bas).
-2. **Avant d'entrer en RA**, règle tout dans la fenêtre normale (⚙) :
-   - **IA** : fournisseur et clé API (ou, plus simple, ta phrase secrète si tu as créé un
-     [coffre à clés](#coffre-à-clés-saisir-ses-clés-une-seule-fois)) ;
-   - **Écoute** : choisis **Whisper** (par exemple Groq), car la reconnaissance vocale intégrée au navigateur
-     n'est pas disponible sur le casque ;
-   - **Voix** : une voix « audio » (OpenAI, ElevenLabs…) est plus sûre que les voix de l'appareil sur le casque.
-3. Appuie sur le bouton **RA** (en haut à droite) et autorise le micro si le casque le demande.
-   L'avatar apparaît à 1,6 m devant toi, posé sur le sol, tourné vers toi.
-
-| Action | Manettes | Mains (suivi des mains) |
-|---|---|---|
-| Déplacer l'avatar | Viser le sol et appuyer sur la **gâchette** : il s'y rend | Viser le sol et **pincer** (pouce + index) |
-| Le faire glisser | Maintenir la **gâchette** ou la **poignée** et bouger le rayon | Garder les doigts pincés et bouger la main |
-| Agrandir / réduire | Maintenir les **deux poignées** et écarter / rapprocher les mains | **Pincer des deux mains** et écarter / rapprocher |
-| Faire pivoter l'avatar | **Joystick** gauche / droite, ou tourner les deux mains (poignées maintenues) | Pincer des deux mains et les faire tourner |
-| Parler | Bouton **A** ou **X** (rappuyer pour terminer) | Viser le **bouton micro** du panneau et pincer |
-| L'interrompre | Bouton **B** ou **Y** | Bouton micro pendant qu'il parle |
-| Charger les clés du coffre | Viser le **cadenas** sous le panneau et appuyer sur la gâchette | Viser le cadenas et pincer |
-| Quitter la RA | Bouton **Meta** (menu du casque) | Geste du menu du casque |
-
-L'avatar garde son orientation : tu peux **tourner autour de lui**, sa tête et son regard te suivent. Quand tu le
-déplaces, il se tourne vers toi à l'arrivée. La taille choisie est mémorisée. Un **panneau flottant** à côté de lui affiche son
-état (« J'écoute… », « Réfléchit… »), ta phrase et sa réponse. Les messages d'erreur s'y affichent aussi.
-
-**Sur un téléphone Android.** La RA fonctionne aussi avec **Chrome** (pas Firefox ni Samsung Internet) sur un
-téléphone compatible ARCore, avec l'application « Services Google Play pour la RA » installée. Appuie sur **RA** :
-l'avatar apparaît par terre à environ 2 m (bouge un peu le téléphone pour que la caméra trouve le sol), touche
-l'écran à un endroit du sol pour l'y envoyer, et garde le doigt appuyé pour le faire glisser. **Avec deux doigts**,
-écarte / rapproche pour l'agrandir ou le réduire, et fais-les tourner pour le faire pivoter. L'interface habituelle
-(micro, messages, réglages) reste affichée par-dessus la caméra ; rappuie sur **RA** pour quitter. Sur iPhone,
-Safari ne propose pas encore la RA du web. Si la RA n'est pas possible, le bouton RA reste grisé et explique pourquoi.
-
-**Mettre l'application en ligne pour le casque.** La réalité augmentée exige une adresse HTTPS. Le plus simple est
-GitHub Pages, gratuit pour un dépôt **public** : rends le dépôt public (Settings → General → Change visibility),
-puis active Pages (Settings → Pages → Source : **GitHub Actions**). Le site est ensuite publié automatiquement à
-chaque mise à jour de `main`.
-
-**Tester sans casque.** Les tests utilisent [IWER](https://github.com/meta-quest/immersive-web-emulation-runtime),
-l'émulateur WebXR de Meta, qui simule un Quest 3 et ses manettes dans un navigateur ordinaire.
-
-**Récupérer les nouveautés du projet d'origine.**
-
-```bash
-git remote add upstream https://github.com/yann-IA/Avatar3D.git   # une seule fois
-git fetch upstream && git merge upstream/main
-```
-
-| Fonction | Ce qui est inclus |
+| Rôle | Logiciel gratuit |
 |---|---|
-| Réalité augmentée | Sur Quest 3 : avatar à taille réelle dans ta pièce, déplaçable aux manettes ou aux mains, panneau de sous-titres flottant |
-| Avatar 3D | Modèles **VRM** (0.x et 1.0) : celui fourni, n'importe quel `.vrm` importé, ou une URL |
-| Animation | Clignements, regard qui suit la caméra ou le pointeur, respiration, balancement, gestes en parlant, tête penchée quand il écoute, regard en l'air quand il réfléchit |
-| Lèvres | Synchronisées sur le **son réel** (analyse du spectre → voyelles a/i/u/e/o) ou, avec les voix du navigateur, sur le **texte** |
-| Émotions | L'IA annote chaque phrase (`[happy]`, `[sad]`, `[surprised]`…), le visage et la posture suivent |
-| Gestes | Animations **VRMA** : salut de la main et danse fournis, import de tes propres `.vrma`. L'IA les déclenche d'elle-même (`[wave]`, `[dance]`) ou tu les lances avec le bouton ✋ |
-| IA | OpenAI, **Claude**, Groq, Mistral, OpenRouter, DeepSeek, Gemini, **Ollama**, LM Studio, ou toute API compatible OpenAI |
-| Voix | Voix de l'appareil (gratuites, réglage hauteur/vitesse), **OpenAI TTS** (avec consignes de ton), **ElevenLabs**, serveurs locaux (Kokoro…) |
-| Écoute | Reconnaissance du navigateur (gratuite) ou **Whisper** (OpenAI, Groq, serveur local) avec détection automatique de fin de phrase |
-| Conversation | Réponses en flux (l'avatar commence à parler dès la première phrase), interruption à tout moment, mode mains libres, mémoire réglable |
+| Modèle de langue | [Ollama](https://ollama.com) avec `mistral-nemo` |
+| Recherche dans les documents | Ollama avec `bge-m3` |
+| Voix | [Kokoro-FastAPI](https://github.com/remsky/Kokoro-FastAPI), voix française `ff_siwis` |
+| Écoute | [whisper.cpp](https://github.com/ggml-org/whisper.cpp) (téléphones dont le navigateur ne reconnaît pas la voix) |
+| Accès depuis Internet | [Tailscale Funnel](https://tailscale.com/kb/1223/funnel) : adresse https fixe, sans ouvrir de port sur la box |
 
-## Utiliser l'application en ligne (rien à installer)
+## Installation sur le Mac
 
-👉 **https://yann-ia.github.io/Avatar-3D-XR/**
-
-Ouvre ce lien dans **Chrome** ou **Edge**, sur PC ou sur téléphone. Sur téléphone, « Ajouter à l'écran
-d'accueil » l'installe comme une application. Tes réglages et tes clés API restent enregistrés dans ton navigateur :
-ils ne passent jamais par GitHub.
-
-Le site est mis à jour automatiquement à chaque modification de la branche `main`
-(`.github/workflows/deploy.yml`).
-
-## Installation facile sous Windows (sans taper de commande)
-
-1. **Installe Node.js** : sur [nodejs.org](https://nodejs.org), télécharge la version **LTS**, ouvre le fichier
-   `.msi` et clique sur « Suivant » jusqu'au bout. Redémarre ensuite le PC.
-2. **Télécharge l'application** : sur cette page GitHub, bouton vert **Code** → **Download ZIP**, puis clic droit
-   sur le fichier → **Extraire tout…** (par exemple dans `Documents`).
-3. **Double-clique sur `Demarrer.bat`** dans le dossier extrait.
-   - Si Windows affiche « Windows a protégé votre ordinateur », clique sur **Informations complémentaires** puis
-     **Exécuter quand même** : c'est normal pour un fichier téléchargé.
-   - La première fois, l'installation des composants prend 1 à 3 minutes.
-   - L'application s'ouvre ensuite dans Chrome (ou Edge). **Laisse la fenêtre noire ouverte** pendant
-     l'utilisation ; ferme-la pour arrêter.
-4. Les fois suivantes, il suffit de double-cliquer à nouveau sur `Demarrer.bat`.
-
-Puis règle l'IA et la voix comme expliqué ci-dessous (étapes 1 à 3).
-
-## Démarrage rapide (ligne de commande)
-
-Il faut [Node.js](https://nodejs.org) 20.19 ou plus récent (22.12+ pour lancer les tests).
+Le Mac a besoin d'Homebrew, de `gh` (connecté à GitHub) et de Tailscale, comme pour Camille.
 
 ```bash
-git clone https://github.com/yann-IA/Avatar-3D-XR.git
-cd Avatar-3D-XR
-npm install
-npm run dev
+gh repo clone yann-IA/hackathon2026 ~/Hackathon2026
+cd ~/Hackathon2026
+bash mac/installer.sh
 ```
 
-Ouvre l'adresse affichée (http://localhost:5173). Ensuite :
+L'installation construit l'application, installe les services (qui démarrent tout seuls et redémarrent
+s'ils s'arrêtent), télécharge les modèles et ouvre l'accès public. `bash mac/etat.sh` vérifie à tout
+moment que tout fonctionne et rappelle l'adresse publique.
 
-1. **⚙ → IA** : choisis un fournisseur, colle ta clé API et choisis un modèle (le bouton « Lister » charge les
-   modèles disponibles).
-2. **⚙ → Voix** : choisis une voix et clique sur « Tester la voix ».
-3. Appuie sur le **micro** (ou la barre d'espace), parle, et attends sa réponse. Tu peux aussi écrire.
+**Sur le Mac de Camille** : les deux éditions cohabitent. Ollama, la voix et l'écoute déjà installés
+pour Camille sont partagés ; seul le serveur de Claire est ajouté (port 8090). L'adresse publique de
+Claire est alors celle de Camille suivie de `:8443`, par exemple `https://cgt.tail1234.ts.net:8443`.
+Pour une adresse distincte, renommez la machine dans la console Tailscale ou installez Claire sur un
+autre Mac. Sur un Mac sans Camille, l'adresse est simplement `https://nom-du-mac.tail1234.ts.net`.
 
-> Pour essayer gratuitement : Groq a une offre gratuite (IA et Whisper), et Ollama fait tourner l'IA sur ta machine.
+## Les documents de l'événement
 
-## Sur un téléphone
+Déposez les PDF dans **`server/documents`** (`open ~/Hackathon2026/server/documents`) : programme,
+règlement, plan d'accès… Ils sont indexés automatiquement quelques secondes après leur arrivée ; pour en
+retirer un, supprimez le fichier. Le nom du fichier sert de titre dans les sources affichées sous chaque
+réponse. Formats lus : PDF (y compris scannés), texte, Markdown, HTML, images. Ces documents sont
+publics (consultables depuis les sources).
 
-Le micro n'est autorisé qu'en **HTTPS** (ou sur `localhost`). Sur ton réseau local :
+Claire ne répond qu'à partir de ces documents : quand ils ne contiennent pas la réponse, elle le dit et
+oriente vers l'équipe d'organisation, sans rien inventer.
 
-```bash
-HTTPS=1 npm run dev
+## Questions des participants et résumé par e-mail
+
+Toutes les questions sont notées, sans rien qui identifie la personne, dans **`Questions.csv`** (Numbers
+ou Excel) : date, question, réponse trouvée ou non, sources, réponse de Claire. Chaque lundi à 8 h (ou
+chaque jour), un résumé est enregistré dans `Résumés/` et envoyé par e-mail : nombre de questions,
+thèmes et préoccupations principales, questions restées sans réponse, questions les plus posées.
+
+Envoi par e-mail, dans `server/.env` (Gmail : mot de passe d'application, voir
+[myaccount.google.com/apppasswords](https://myaccount.google.com/apppasswords) ; Orange :
+`SMTP_HOST=smtp.orange.fr`) :
+
+```
+REPORT_EMAIL=votre.adresse@exemple.fr
+SMTP_USER=adresse.qui.envoie@gmail.com
+SMTP_PASS=abcd efgh ijkl mnop
+REPORT_SCHEDULE=quotidien
 ```
 
-Ouvre `https://<adresse-IP-du-PC>:5173` sur le téléphone, accepte l'avertissement de certificat (il est
-auto-signé), puis « Ajouter à l'écran d'accueil » pour l'installer comme une application.
+```bash
+npm run essai-mail                 # vérifie l'envoi
+npm run resume -- --tout           # résumé de toutes les questions (--envoyer pour le recevoir)
+```
 
-Pour un usage permanent, publie le dossier `dist/` (créé par `npm run build`) sur un hébergeur HTTPS statique
-(GitHub Pages, Netlify, Cloudflare Pages…). Comme tout se passe dans le navigateur, aucun serveur n'est nécessaire.
+## Personnaliser
 
-## Sur un Raspberry Pi ou un mini-PC
+- **Nom de l'assistante, de l'événement, contact** : `ASSISTANT_NAME`, `EVENT_NAME` et `EVENT_CONTACT`
+  dans `server/.env` (consignes, messages, résumés), et les mêmes textes dans `src/edition.ts`
+  (accueil, questions suggérées, bandeau en haut de l'écran), puis `bash mac/mettre-a-jour.sh`.
+- **Personnage et consignes** : `server/persona.md` remplace la présentation de Claire (les règles de
+  prudence restent ajoutées par le serveur).
+- **Réglages du serveur** (modèle, voix, limites…) : `server/.env` (voir `server/.env.example`), puis
+  `launchctl kickstart -k gui/$(id -u)/fr.hackathon2026.serveur`.
 
-Un Raspberry Pi 4 ou 5 suffit : le rendu 3D se fait sur la puce graphique et l'IA tourne dans le cloud (ou sur
-une autre machine avec Ollama).
+## Mettre à jour
+
+```bash
+cd ~/Hackathon2026 && bash mac/mettre-a-jour.sh
+```
+
+## Pour les développeurs
 
 ```bash
 npm install
-npm run fetch-avatar        # copie locale de l'avatar (plus rapide, marche hors-ligne)
+npm run server      # serveur (Ollama, Kokoro et whisper doivent tourner)
+npm run dev         # application en développement, questions relayées vers le serveur (port 8090)
+npm test
 npm run build
-npm run preview -- --port 8080 &
-chromium-browser --kiosk --autoplay-policy=no-user-gesture-required http://localhost:8080
 ```
 
-- **Écoute** : Chromium sur Linux n'a pas la reconnaissance vocale intégrée. Choisis **Whisper**
-  (Groq : `https://api.groq.com/openai/v1`, modèle `whisper-large-v3-turbo`, très rapide).
-- **Affichage → Qualité graphique : Basse** si l'animation est saccadée.
-- Un micro USB (ou une enceinte avec micro intégré) fait l'affaire.
-
-## Changer d'avatar
-
-Six avatars sont fournis, à choisir dans **⚙ → Avatar** :
-
-| Avatar | Personnage par défaut | Voix par défaut |
-|---|---|---|
-| Exemple pixiv | **Aiko**, chaleureuse, curieuse et pleine d'humour | féminine, douce et enjouée (OpenAI : `nova`) |
-| Léo (homme, style figurine) | **Léo**, posé, drôle, amateur de musique et de cinéma | masculine, posée et chaleureuse (OpenAI : `ash`) |
-| Bip (petit robot à écran, antenne qui ballotte) | **Bip**, robot curieux qui découvre le monde des humains | aiguë et rythmée, « petit robot » (OpenAI : `alloy`) |
-| Dino (dinosaure tout rond, queue qui remue) | **Dino**, petit dinosaure joyeux et gourmand | enfantine et pétillante (OpenAI : `fable`) |
-| Claire (femme blonde d'environ 1,70 m, chemise noire au logo Orange, pantalon noir) | **Claire**, la trentaine, dynamique et chaleureuse | féminine, claire et posée (OpenAI : `coral`) |
-| Camille (femme brune, tenue blanche, chasuble rouge CGT) | **Camille**, militante, spécialiste de tout ce qui concerne la CGT | féminine, chaleureuse et convaincue (OpenAI : `shimmer`) |
-
-**Chaque avatar a son propre personnage** : nom, personnalité, voix et ton. Quand tu changes d'avatar,
-l'application mémorise ce que tu avais réglé pour le précédent et charge le personnage du nouveau. Tes retouches
-sont donc conservées pour chacun, et ⚙ → Personnage → « Rétablir le personnage d'origine » les annule. Avec les
-voix de l'appareil, l'application choisit automatiquement une voix masculine ou féminine selon le personnage
-(d'après le nom des voix installées), sauf si tu en choisis une précise.
-
-Léo, Bip et Dino sont des créations originales du projet, en domaine public (CC0). Ils sont générés par
-`scripts/build-avatars.mjs` à partir de formes simples, avec toutes les expressions VRM (yeux, bouche pour la
-parole, émotions, regard). Pour retoucher leurs couleurs ou leurs formes, modifie ce script puis lance
-`npm run build-avatars`. Leurs personnages par défaut sont définis dans `src/profiles.ts`.
-
-Claire est une adaptation du modèle d'exemple de pixiv (sa licence autorise la modification et la
-redistribution, y compris commerciale) : silhouette adulte (environ 1,70 m), cheveux blonds, yeux bleu-gris,
-chemise noire à manches longues avec le logo Orange, pantalon noir. Elle est générée par `scripts/build-claire.py` (Python 3 avec numpy et Pillow :
-`python3 scripts/build-claire.py`) ; la taille et le côté du logo se règlent en tête du script. Le logo Orange
-est une marque d'Orange : vérifie que son usage est autorisé dans ton contexte avant de diffuser l'avatar.
-
-Camille est faite de la même façon par `scripts/build-camille.py` : cheveux bruns coupés au-dessus des épaules,
-chemise et pantalon blancs, chasuble rouge avec le logo CGT FAPT (fourni dans `scripts/assets/cgt-logo.jpg`) dans
-le dos entre les omoplates et en petit à droite sur le devant. Les outils communs aux deux scripts sont dans `scripts/vroid_kit.py`.
-
-Pour ajouter tes propres avatars : « Importer un fichier .vrm » (il est conservé dans le navigateur), ou colle
-une URL. Un avatar importé reprend le personnage actuel, que tu peux ensuite modifier : il le gardera.
-
-- [VRoid Studio](https://vroid.com/studio) : crée ton propre personnage, gratuitement, puis exporte-le en VRM.
-- [VRoid Hub](https://hub.vroid.com) : des milliers de modèles, dont beaucoup sont téléchargeables.
-- [Booth](https://booth.pm) : modèles gratuits et payants.
-
-Vérifie la licence de chaque modèle. Le modèle d'exemple de pixiv (`VRM1_Constraint_Twist_Sample`) est
-fourni avec une licence qui autorise la redistribution.
-
-Les expressions utilisées sont celles du standard VRM (`happy`, `sad`, `angry`, `surprised`, `relaxed`,
-`aa`/`ih`/`ou`/`ee`/`oh`, `blink`) : tout modèle VRM correct les possède.
-
-## Gestes et animations (VRMA)
-
-Le format **VRMA** (VRM Animation) décrit un mouvement qui s'applique à n'importe quel avatar VRM.
-Deux animations sont fournies :
-
-| Geste | Balise de l'IA | Comportement |
-|---|---|---|
-| Salut de la main | `[wave]` | Pour dire bonjour ou au revoir ; l'avatar continue de te regarder et de parler |
-| Danse | `[dance]` | Quand tu le lui demandes ou pour fêter quelque chose ; la caméra recule pour montrer tout le corps |
-
-- **Bouton ✋** (en haut) : lance un geste à la main. **Échap** arrête l'animation en cours.
-- **⚙ → Gestes** : importe tes fichiers `.vrma`. Chacun reçoit une balise tirée de son nom (« Grand salut »
-  devient `[grand-salut]`) et l'IA est prévenue qu'elle peut l'utiliser. Une case permet de désactiver les
-  gestes spontanés de l'IA.
-- Où trouver des VRMA : des packs gratuits (dont celui de VRoid) sur [Booth](https://booth.pm/en/search/VRMA),
-  en vérifiant leur licence, ou crée les tiennes dans Blender avec l'extension VRM.
-
-Les deux animations fournies sont générées par `scripts/build-vrma.mjs`. Chaque mouvement y est décrit par une
-fonction du temps, ce qui permet de les retoucher facilement ou d'en ajouter. Relance ensuite
-`npm run build-vrma` pour regénérer `public/animations/*.vrma`.
-
-## Mémoire à long terme
-
-Le personnage se souvient de toi d'une conversation à l'autre :
-
-- **Retenir** : quand la conversation marque une pause, l'application demande à l'IA de noter les informations
-  durables qu'elle a apprises (ton prénom, tes goûts, tes proches, tes projets, les événements importants…). Un
-  petit message « 💭 … retient » le signale. Tu peux aussi dire « retiens que… » ou « oublie que… ».
-- **Se rappeler** : à chaque message, les souvenirs utiles sont rappelés au personnage (tous s'il y en a peu,
-  sinon ceux qui ont un rapport avec ce que tu dis, plus les plus récents).
-- **Garder la main** : **⚙ → Mémoire** liste les souvenirs, permet d'en ajouter, d'en supprimer, de tout oublier,
-  de les exporter (sauvegarde ou transfert vers un autre appareil) et de les réimporter. La mémoire peut aussi
-  être désactivée.
-
-Les souvenirs sont partagés par tous les avatars. Ils sont enregistrés uniquement dans ton navigateur et envoyés
-au fournisseur d'IA avec tes messages. Chaque mémorisation est une petite requête supplémentaire auprès de ce
-fournisseur. La conversation en cours est elle aussi conservée si tu recharges la page (« Effacer la
-conversation » dans ⚙ → IA la remet à zéro, sans toucher aux souvenirs).
-
-## Changer de voix et de ton
-
-| Moteur | Coût | Ton de voix |
-|---|---|---|
-| Voix de l'appareil | Gratuit, hors-ligne | Choix de la voix, hauteur, vitesse. Sur PC, les voix « Google » (Chrome) ou « Natural » (Edge) sont les plus agréables |
-| OpenAI `gpt-4o-mini-tts` | Payant, peu cher | 11 voix, et un champ **« ton / style »** en langage naturel : « joyeuse et énergique », « chuchotée », « timide »… |
-| ElevenLabs | Offre gratuite limitée | Voix très naturelles, stabilité, expressivité, clonage de voix |
-| Kokoro-FastAPI (local) | Gratuit | Choisis « OpenAI / compatible », adresse `http://localhost:8880/v1`, voix `ff_siwis` (française) |
-
-## Choisir l'IA
-
-Tout se règle dans **⚙ → IA**. Chaque fournisseur garde sa propre clé et son propre modèle, tu peux donc passer
-de l'un à l'autre à tout moment. La personnalité se règle dans **⚙ → Personnage**.
-
-- **Claude** : utilise le SDK officiel Anthropic. Le réglage « Rapidité » (effort) est sur « Rapide » par défaut,
-  pour la voix. Pour encore moins d'attente, choisis `claude-haiku-4-5` ou `claude-sonnet-5-5`. Sur les modèles
-  récents, si un filtre de sécurité refuse une requête, elle est automatiquement rejouée sur un autre modèle
-  (paramètre `fallbacks: "default"`).
-- **Choisir un modèle** : « Lister » interroge le fournisseur ; la liste défile et se filtre en tapant (« mini »,
-  « claude »…). Les modèles qui ne servent pas à discuter (Whisper, voix, images) n'y figurent pas : la
-  reconnaissance vocale Whisper se règle dans **⚙ → Écoute**.
-- **Une seule clé OpenAI suffit** : si les champs de clé des onglets Voix et Écoute sont vides, la clé saisie
-  dans ⚙ → IA pour le même service est utilisée. Sur un navigateur qui ne reconnaît pas la voix lui-même
-  (Firefox, casque Quest…), Whisper est alors utilisé automatiquement.
-- **Ollama** : `ollama serve` puis `ollama pull llama3.2`. Si le navigateur bloque l'appel, lance Ollama avec
-  `OLLAMA_ORIGINS=*` ou coche « Passer par le relais local ».
-- **Erreur CORS / « Failed to fetch »** : certains fournisseurs refusent les appels faits directement depuis un
-  navigateur. Coche **« Passer par le relais local »** : les appels passent alors par le serveur
-  `npm run dev` / `npm run preview`.
-
-## Coffre à clés (saisir ses clés une seule fois)
-
-Taper de longues clés API avec le clavier du casque est pénible. Le coffre à clés règle ça : tu saisis tes clés
-une fois sur le PC, tu les chiffres avec une **phrase secrète**, et sur le casque (ou tout autre appareil) tu n'as
-plus qu'à taper cette phrase.
-
-1. **Sur le PC**, renseigne tes clés (⚙ → IA, Voix, Écoute) puis va dans **⚙ → IA → 🔐 Coffre à clés →
-   Créer un coffre…**. Choisis une phrase d'au moins 16 caractères, idéalement 4 ou 5 mots tirés au hasard
-   (« girafe lampe violon nuage »), et note-la : elle ne peut pas être retrouvée.
-2. Le fichier **`vault.json`** est téléchargé. Publie-le avec le site : ouvre
-   [le dossier `public` du dépôt sur GitHub](https://github.com/yann-IA/Avatar-3D-XR/upload/main/public),
-   glisse le fichier dans la page, puis **Commit changes**. Le site est mis à jour en une à deux minutes.
-3. **Sur le casque**, ouvre l'application : elle propose aussitôt le coffre. Tape la phrase secrète puis
-   **Entrée** (ou « Déverrouiller »), c'est prêt. Tu peux aussi le faire **directement en RA** : si aucune clé
-   n'est chargée, un clavier virtuel apparaît devant toi en entrant en RA ; vise les touches avec la manette
-   (ou la main) et appuie sur la gâchette (ou pince), puis « Valider ». Le bouton **cadenas** sous le panneau
-   flottant rouvre ce clavier. Si tu crées plus tard un nouveau coffre (nouvelle clé), il est proposé à nouveau
-   sur les appareils déjà configurés.
-
-**Vérifier que les clés sont chargées.** Un message le confirme au déverrouillage, et ⚙ → IA indique l'état du
-coffre sur l'appareil (clés chargées, coffre trouvé mais pas encore déverrouillé, ou aucun coffre). En RA, le
-panneau affiche « Clés du coffre ✓ » et le cadenas devient vert.
-
-**Clés masquées.** Les clés chargées depuis le coffre ne sont jamais affichées dans les réglages (IA, Voix,
-Écoute) : à leur place, « 🔐 Chargée depuis le coffre ». Personne ne peut donc les lire ni les recopier en
-prenant le casque. « Remplacer » efface une clé pour en saisir une autre à la main.
-
-**Désactiver le coffre.** ⚙ → IA → **Désactiver le coffre** efface de l'appareil les clés qu'il avait chargées
-(par exemple avant de prêter le casque). Ta phrase secrète permet de les recharger à tout moment.
-
-Sans publier le fichier, tu peux aussi le copier sur l'appareil et utiliser **⚙ → IA → Importer un fichier de
-coffre**.
-
-Le coffre contient les clés et les réglages de connexion (fournisseur, modèle, adresse, moteurs de voix et
-d'écoute), pas les personnages ni les souvenirs. Il est chiffré en AES-256-GCM avec une clé dérivée de la phrase
-secrète (PBKDF2-SHA256, 600 000 itérations, sel aléatoire) : sans la phrase, le fichier est illisible, et une
-mauvaise phrase est détectée. Comme il est public, sa sécurité repose entièrement sur la phrase secrète :
-choisis-la longue et unique, et fixe une limite de dépenses chez tes fournisseurs.
-
-## Comment ça marche
-
-```
-micro ─► reconnaissance vocale ─► texte
-                                   │
-                                   ▼
-                     IA (réponse en flux, phrases annotées « [happy] … »)
-                                   │
-                    découpage en phrases (SentenceChunker)
-                                   │
-           ┌───────────────────────┴───────────────────────┐
-           ▼                                               ▼
-  synthèse vocale (phrase N+1 préparée            émotion → expression du visage
-  pendant la lecture de la phrase N)               et posture de la tête
-           │
-           ▼
-  analyse du son (AnalyserNode) ─► voyelles a/i/u/e/o ─► bouche de l'avatar
-```
-
-```
-src/
-├── main.ts                 assemblage de l'interface
-├── settings.ts             réglages, fournisseurs, sauvegarde locale
-├── profiles.ts             personnage (nom, personnalité, voix) propre à chaque avatar
-├── vault.ts                coffre à clés : chiffrement des clés API par une phrase secrète
-├── avatar/
-│   ├── stage.ts            scène three.js + VRM : pose, respiration, clignements, regard, émotions
-│   ├── gestures.ts         lecture des animations VRMA, mélangées à l'animation procédurale
-│   ├── hair.ts             réglage des collisions des mèches longues (évite qu'elles traversent le corps)
-│   └── lipsync.ts          synchronisation labiale (son réel ou texte)
-├── core/
-│   ├── conversation.ts     orchestration écoute → IA → voix, interruptions, mains libres
-│   ├── memory.ts           mémoire à long terme : extraction, stockage et rappel des souvenirs
-│   ├── chunker.ts          découpe le flux en phrases prononçables
-│   └── emotion.ts          balises d'émotion et nettoyage du texte (markdown, emojis…)
-├── xr/ar.ts                réalité augmentée : placement au sol, manettes/mains, panneau flottant
-├── xr/keyboard.ts          clavier virtuel en RA (phrase secrète du coffre)
-├── llm/                    clients IA (compatible OpenAI, Anthropic)
-├── tts/                    moteurs de voix et file de lecture
-├── stt/                    reconnaissance vocale (navigateur, Whisper + détection de silence)
-└── ui/                     panneau de réglages, fenêtres du coffre à clés
-```
-
-Commandes : `npm run dev` (développement), `npm run build` (version optimisée dans `dist/`),
-`npm test` (tests unitaires), `npm run typecheck`, `npm run build-vrma` (regénère les animations fournies), `npm run build-avatars` (regénère Léo, Bip et Dino).
-
-Pour déboguer, ajoute `?debug` à l'URL : l'objet `stage` est alors accessible dans la console.
-
-## Sécurité
-
-- Les clés API sont enregistrées dans le `localStorage` du navigateur, en clair. N'utilise pas l'application
-  sur un appareil partagé avec des clés à gros budget, et fixe une limite de dépenses chez ton fournisseur.
-- Le coffre à clés publié (`vault.json`) est lisible par tous, mais chiffré : seule ta phrase secrète le protège.
-  Si tu penses qu'elle a fuité, révoque les clés chez les fournisseurs et crée un nouveau coffre.
-- Le relais local (`/__proxy/`) relaie les requêtes vers n'importe quelle adresse. Avec `--host`, il est donc
-  accessible depuis tout ton réseau local : ne l'expose pas sur Internet.
-
-## Pistes pour aller plus loin
-
-- Plus d'animations fournies (applaudir, révérence, réfléchir…) dans `scripts/build-vrma.mjs`
-- Avatars Live2D (2D) avec `pixi-live2d-display`
-- Mot d'éveil (« Hé Aiko ») et détection de voix plus fine (Silero VAD en WebAssembly)
-- Application native (Capacitor pour Android/iOS, Tauri pour le bureau)
+- `server/` : serveur Node sans dépendance lourde (API compatible OpenAI avec file d'attente et sources,
+  RAG, journal des questions, résumés, envoi d'e-mails).
+- `src/edition.ts` : ce qui distingue l'édition dans l'application (réglages imposés, accueil).
+- `scripts/build-claire.py` régénère Claire à partir du modèle d'exemple de pixiv (licence VRM 1.0 :
+  modification et redistribution autorisées) ; `npm run fetch-avatar` télécharge d'abord le modèle.

@@ -1,5 +1,7 @@
 import { defineConfig, type Plugin, type Connect } from 'vite'
 import basicSsl from '@vitejs/plugin-basic-ssl'
+import { createHash } from 'node:crypto'
+import { existsSync, readFileSync } from 'node:fs'
 import { Readable } from 'node:stream'
 
 /**
@@ -57,8 +59,16 @@ function localProxy(): Plugin {
   }
 }
 
+/** Empreinte du fichier de l'avatar : son adresse change à chaque nouvelle version, ce qui contourne
+ * toutes les mémoires (navigateur, cache hors-ligne) qui garderaient l'ancienne. */
+const avatarFile = 'public/avatars/claire.vrm'
+const avatarVersion = existsSync(avatarFile) ? createHash('sha1').update(readFileSync(avatarFile)).digest('hex').slice(0, 10) : 'dev'
+
 export default defineConfig({
   base: './',
+  define: { __AVATAR_VERSION__: JSON.stringify(avatarVersion) },
   plugins: [localProxy(), ...(process.env.HTTPS ? [basicSsl()] : [])],
   build: { chunkSizeWarningLimit: 1500 },
+  // en développement, les questions vont au serveur de l'assistante (npm run server)
+  server: { proxy: { '/api': 'http://127.0.0.1:8090', '/docs': 'http://127.0.0.1:8090' } },
 })

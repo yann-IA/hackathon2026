@@ -14,8 +14,10 @@ import { deleteAvatarFile, loadAvatarFile, saveAvatarFile } from './storage'
 import { unlockAudio } from './tts/audio'
 import { createTTS, listElevenLabsVoices } from './tts/engines'
 import { SettingsPanel } from './ui/panel'
+import { EDITION, applyEdition } from './edition'
 
 const settings = loadSettings()
+applyEdition(settings) // édition événement : l'assistante et le serveur du Mac, rien à régler
 // Première version avec un personnage par avatar : si Léo, Bip ou Dino était déjà choisi
 // avec le personnage par défaut (Aiko), il reçoit le sien.
 {
@@ -49,6 +51,40 @@ toastEl.addEventListener('click', () => (toastEl.hidden = true))
 
 const STATE_LABELS = { idle: 'En attente', listening: 'J’écoute…', thinking: 'Réfléchit…', speaking: 'Parle' }
 
+/* ----------------- Édition événement : réflexion et sources ----------------- */
+
+const thinkingEl = $('thinking')
+const sourcesEl = $('sources')
+interface Source {
+  title: string
+  url: string
+  page?: number
+}
+
+/** Animation d'attente : l'assistante cherche, ou des personnes passent avant (file d'attente du Mac). */
+function showThinking(queue: number): void {
+  $('thinking-text').textContent =
+    queue > 0 ? `Beaucoup de questions en ce moment : ${queue} ${queue > 1 ? 'personnes' : 'personne'} avant vous…` : EDITION.thinking
+}
+
+/** Documents dont vient la réponse, à ouvrir d'un geste. */
+function showSources(list: Source[]): void {
+  sourcesEl.replaceChildren()
+  sourcesEl.hidden = !list.length
+  if (!list.length) return
+  const label = document.createElement('span')
+  label.textContent = list.length > 1 ? 'Sources :' : 'Source :'
+  sourcesEl.append(label)
+  for (const s of list) {
+    const a = document.createElement('a')
+    a.href = s.url
+    a.target = '_blank'
+    a.rel = 'noopener'
+    a.textContent = s.page ? `${s.title} (p. ${s.page})` : s.title
+    sourcesEl.append(a)
+  }
+}
+
 /* ---------------------------- Conversation ---------------------------- */
 
 /** Session de réalité augmentée (créée seulement si l'appareil la prend en charge). */
@@ -65,6 +101,8 @@ memory.onChange((added) => {
 
 const convo = new Conversation(settings, {
   onState: (s) => {
+    if (s === 'thinking') showThinking(0)
+    thinkingEl.hidden = s !== 'thinking'
     statusEl.dataset.state = s
     statusEl.textContent = STATE_LABELS[s]
     document.body.dataset.state = s
@@ -72,7 +110,15 @@ const convo = new Conversation(settings, {
     micBtn.setAttribute('aria-label', s === 'listening' ? 'Terminer' : s === 'idle' ? 'Parler' : 'Interrompre')
     ar?.setState(s)
   },
+  onMeta: (m) => {
+    if (typeof m.queue === 'number') showThinking(m.queue)
+    if (Array.isArray(m.sources)) showSources(m.sources as Source[])
+  },
   onUserText: (text, final) => {
+    if (final && text) {
+      $('welcome').hidden = true
+      showSources([])
+    }
     userLine.textContent = text
     userLine.classList.toggle('interim', !final)
     ar?.setUserText(text)
@@ -90,6 +136,13 @@ const convo = new Conversation(settings, {
     ar?.setLevel(l) // en RA, le bouton micro du panneau grossit avec la voix : on voit que le micro entend
   },
   onError: (m) => {
+    // voix du serveur indisponible : la voix du téléphone prend le relais pour cette visite
+    if (settings.tts.engine === 'openai' && /voix|audio\/speech|Kokoro/i.test(m)) {
+      settings.tts.engine = 'browser'
+      convo.reloadVoice()
+      toast(`La voix de ${EDITION.name} est indisponible : celle de votre téléphone prend le relais.`, 'info', 5000)
+      return
+    }
     toast(m)
     if (ar?.active) ar.showNotice(m) // les messages à l'écran ne sont pas visibles dans le casque
   },
@@ -606,9 +659,33 @@ void loadAvatar(settings.avatar.current).then(() => {
   for (const a of settings.gestures.list) if (a.builtin) void stage.gestures.load(a.url).catch(() => {})
 })
 
-void offerVault().then((offered) => {
-  if (!offered && needsSetup()) toast('Bienvenue ! Ouvre les réglages (⚙) pour choisir ton IA et sa voix.', 'info', 9000)
+// Accueil (mode kiosque) : les questions suggérées défilent une par une ; un appui pose la question
+$('brand').textContent = EDITION.event
+$('welcome-text').textContent = EDITION.welcome
+$('privacy').textContent = EDITION.privacy
+let suggestionIndex = 0
+const suggestionText = $('suggestion-text')
+const suggestionDots = EDITION.suggestions.map(() => document.createElement('i'))
+$('suggestion-dots').append(...suggestionDots)
+const showSuggestion = (i: number) => {
+  suggestionIndex = i
+  suggestionText.textContent = EDITION.suggestions[i]
+  suggestionText.classList.remove('in')
+  void suggestionText.offsetWidth // relance l'animation d'apparition
+  suggestionText.classList.add('in')
+  suggestionDots.forEach((d, j) => d.classList.toggle('on', j === i))
+}
+showSuggestion(0)
+setInterval(() => {
+  if (document.hidden || $('welcome').hidden || (document.body.dataset.state ?? 'idle') !== 'idle') return
+  showSuggestion((suggestionIndex + 1) % EDITION.suggestions.length)
+}, 4500)
+$('suggestion').addEventListener('click', () => {
+  void unlockAudio()
+  void convo.send(EDITION.suggestions[suggestionIndex])
 })
+if (convo.lastExchange) $('welcome').hidden = true
+void offerVault // le coffre à clés n'existe pas dans cette édition (aucune clé à saisir)
 
 if (import.meta.env.PROD && 'serviceWorker' in navigator) {
   window.addEventListener('load', () => void navigator.serviceWorker.register('sw.js').catch(() => {}))

@@ -1,0 +1,4 @@
+# Dépendances de Kokoro-FastAPI remplacées pour la voix française de l'assistante :
+# sans les extensions japonaise, coréenne et chinoise de misaki (pyopenjtalk ne se compile pas
+# sur Mac avec CMake 4). Le français passe par espeak-ng (espeakng-loader).
+misaki[en]==0.9.4

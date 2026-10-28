@@ -261,16 +261,11 @@ export const SAMPLE_AVATAR: AvatarEntry = {
 }
 
 /** Avatars créés pour l'application (voir scripts/build-avatars.mjs). */
-export const BUILTIN_AVATARS: AvatarEntry[] = [
-  SAMPLE_AVATAR,
-  { id: 'leo', name: 'Léo (homme)', url: 'avatars/leo.vrm', builtin: true },
-  { id: 'bip', name: 'Bip (petit robot)', url: 'avatars/bip.vrm', builtin: true },
-  { id: 'dino', name: 'Dino (dinosaure)', url: 'avatars/dino.vrm', builtin: true },
-  // Adaptation du modèle de pixiv (voir scripts/build-claire.py).
-  { id: 'claire', name: 'Claire (femme, chemise Orange)', url: 'avatars/claire.vrm', builtin: true },
-  // Adaptation du modèle de pixiv (voir scripts/build-camille.py).
-  { id: 'camille', name: 'Camille (femme, chasuble CGT)', url: 'avatars/camille.vrm', builtin: true },
-]
+// Édition événement : Claire seule (adaptation du modèle de pixiv, voir scripts/build-claire.py).
+declare const __AVATAR_VERSION__: string
+/** Version du fichier (empreinte calculée à la construction) : une nouvelle version de l'avatar a une nouvelle adresse. */
+const AVATAR_VERSION = typeof __AVATAR_VERSION__ === 'string' ? __AVATAR_VERSION__ : 'dev'
+export const BUILTIN_AVATARS: AvatarEntry[] = [{ id: 'claire', name: 'Claire', url: `avatars/claire.vrm?v=${AVATAR_VERSION}`, builtin: true }]
 
 export const DEFAULT_PROMPT = `Tu es une compagne virtuelle chaleureuse, curieuse et pleine d'humour.
 Tu discutes à l'oral avec ton interlocuteur : réponds en phrases courtes et naturelles (2 à 4 phrases en général), comme dans une vraie conversation.`
@@ -316,7 +311,7 @@ export function defaultSettings(): Settings {
       whisper: { baseUrl: 'https://api.openai.com/v1', apiKey: '', model: 'whisper-1' },
       silenceMs: 900,
     },
-    avatar: { current: SAMPLE_AVATAR.id, list: [...BUILTIN_AVATARS], framing: 'bust', followPointer: true, arScale: 1 },
+    avatar: { current: 'claire', list: [...BUILTIN_AVATARS], framing: 'bust', followPointer: true, arScale: 1 },
     vault: { applied: '', dismissed: '', locked: [] },
     memory: { enabled: true },
     profiles: {},

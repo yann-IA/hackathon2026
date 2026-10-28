@@ -2,7 +2,7 @@
 Outils pour adapter le modèle VRM d'exemple de pixiv (public/avatars/default.vrm) : lecture et
 écriture du fichier, recoloration, décors projetés sur les vêtements, vêtements « peints » sur la
 peau avec leur volume, yeux et silhouette adultes (squelette, liaisons, ressorts recalculés).
-Utilisé par build-claire.py et build-camille.py.
+Utilisé par build-claire.py.
 """
 import io
 import json
@@ -659,9 +659,9 @@ def add_texture(glb, img, name, like_texture):
     return len(j['textures']) - 1
 
 
-def dress_body(glb, wp, hb, tp, hem_y, legs, legs_shade, sleeves, sleeves_shade, cuff, cuff_line, cuff_line_shade, neutral_shade=False, cuff_width=0.053):
-    """Habille la peau : pantalon (jambes et bassin) et manches longues jusqu'aux poignets, avec
-    revers, puis donne du volume au tissu. `tp` : sommets du haut (t-shirt d'origine), `hem_y` : son
+def dress_body(glb, wp, hb, tp, hem_y, legs, legs_shade, sleeves=None, sleeves_shade=None, cuff=None, cuff_line=None, cuff_line_shade=None, neutral_shade=False, cuff_width=0.053):
+    """Habille la peau : pantalon (jambes et bassin) et, si `sleeves` est donné, manches longues
+    jusqu'aux poignets avec revers (sinon les bras restent nus), puis donne du volume au tissu. `tp` : sommets du haut (t-shirt d'origine), `hem_y` : son
     bas. Couleurs en RVB 0-255 ; les teintes « _shade » sont celles voulues dans l'ombre.
     neutral_shade : l'ombre rosée de la peau est reportée dans sa texture d'ombre et le facteur
     d'ombre devient neutre (indispensable pour un tissu clair, qu'on ne peut pas compenser)."""
@@ -692,6 +692,8 @@ def dress_body(glb, wp, hb, tp, hem_y, legs, legs_shade, sleeves, sleeves_shade,
     waist_y = hem_y + 0.06  # le haut du pantalon reste caché sous la chemise
     is_leg = (y < waist_y) & ((leg_w > 0.15) | (np.abs(x) < 0.2))
     is_arm = (arm_w > 0.5) & (np.abs(x) < hand_x - 0.012)
+    if sleeves is None:  # bras nus (haut à manches courtes)
+        is_arm[:] = False
     idx = body['idx']
     tri_cloth = (is_leg | is_arm)[idx].all(axis=1) | (is_leg[idx].any(axis=1) & (y[idx] < waist_y - 0.02).all(axis=1))
     i_body, skin = glb.image('Body_00')
@@ -700,20 +702,23 @@ def dress_body(glb, wp, hb, tp, hem_y, legs, legs_shade, sleeves, sleeves_shade,
     grown = np.asarray(Image.fromarray((mask * 255).astype(np.uint8)).filter(ImageFilter.MaxFilter(13)), np.uint8) > 0
     mask_img = Image.fromarray(((mask | (grown & ~skin_mask)) * 255).astype(np.uint8)).filter(ImageFilter.MaxFilter(3))
     # poignets : revers de manche (bande légèrement plus claire, liseré)
-    arm_tris = idx[tri_cloth & is_arm[idx].any(axis=1)]
+    arm_tris = idx[tri_cloth & is_arm[idx].any(axis=1)] if sleeves is not None else idx[:1]
     arm_mask, ax_val = raster_triangles(skin.size, body['uv'][arm_tris], np.abs(x)[arm_tris][..., None].astype(np.float32))
     arm_mask = np.asarray(Image.fromarray((arm_mask * 255).astype(np.uint8)).filter(ImageFilter.MaxFilter(9)), np.uint8) > 0
+    if sleeves is None:
+        arm_mask[:] = False
     ax_val = ax_val[..., 0]
     c0 = hand_x - 0.012 - cuff_width  # haut du revers
-    cuff_band = (ax_val > c0) & (ax_val < hand_x - 0.012)
-    cuff_edge = (ax_val > c0 - 0.003) & (ax_val < c0 + 0.003)
+    cuff_band = (ax_val > c0) & (ax_val < hand_x - 0.012) & arm_mask
+    cuff_edge = (ax_val > c0 - 0.003) & (ax_val < c0 + 0.003) & arm_mask
     rng = np.random.default_rng(7)
     noise = rng.normal(0, 1, (skin.height, skin.width)).astype(np.float32)
     noise = np.asarray(Image.fromarray(((noise * 18) + 128).clip(0, 255).astype(np.uint8)).filter(ImageFilter.GaussianBlur(1.2)), np.float32) - 128
     fabric = np.clip(np.array(legs, np.float32) + noise[..., None] * 0.08, 0, 255)
-    fabric[arm_mask] = np.clip(np.array(sleeves, np.float32) + noise[arm_mask][:, None] * 0.08, 0, 255)
-    fabric[cuff_band] = cuff
-    fabric[cuff_edge] = cuff_line
+    if sleeves is not None:
+        fabric[arm_mask] = np.clip(np.array(sleeves, np.float32) + noise[arm_mask][:, None] * 0.08, 0, 255)
+        fabric[cuff_band] = cuff
+        fabric[cuff_edge] = cuff_line
     sk = np.asarray(skin, np.float32)
     k = np.asarray(mask_img, np.float32)[..., None] / 255
     glb.set_image(i_body, Image.fromarray(np.clip(fabric * k + sk * (1 - k), 0, 255).astype(np.uint8)))
@@ -727,8 +732,9 @@ def dress_body(glb, wp, hb, tp, hem_y, legs, legs_shade, sleeves, sleeves_shade,
     else:  # le tissu est compensé (tissu sombre)
         sk_shade, div = sk, factor
     shade_fabric = np.clip(np.array(legs_shade, np.float32) / div + noise[..., None] * 0.05, 0, 255)
-    shade_fabric[arm_mask] = np.array(sleeves_shade, np.float32) / div
-    shade_fabric[cuff_edge] = np.array(cuff_line_shade, np.float32) / div
+    if sleeves is not None:
+        shade_fabric[arm_mask] = np.array(sleeves_shade, np.float32) / div
+        shade_fabric[cuff_edge] = np.array(cuff_line_shade, np.float32) / div
     shade_img = Image.fromarray(np.clip(shade_fabric * k + sk_shade * (1 - k), 0, 255).astype(np.uint8))
     mt['shadeMultiplyTexture'] = {'index': add_texture(glb, shade_img, 'Body_00_shade', skin_mat['pbrMetallicRoughness']['baseColorTexture']['index'])}
 
@@ -751,6 +757,8 @@ def dress_body(glb, wp, hb, tp, hem_y, legs, legs_shade, sleeves, sleeves_shade,
         apply_tube(new_pos, sel, lambda p: p[:, [0, 2]] - leg_axis(p[:, 1]), grow, [0, 2])
 
         # bras : manche longue qui prolonge la manche courte de la chemise
+        if sleeves is None:
+            continue
         sgn = 1 if side == 'left' else -1
         arm0, hand = wp[hb[f'{side}UpperArm']], wp[hb[f'{side}Hand']]
 
@@ -888,3 +896,150 @@ def settle_springs(glb, margin=0.004):
                 spring['joints'] = joints[: max(k, 1)]
                 break
     return removed
+
+
+def write_ints(glb, index, values):
+    """Écrit un accesseur d'entiers (JOINTS_0…), même type que l'original."""
+    acc = glb.json['accessors'][index]
+    bv = glb.json['bufferViews'][acc['bufferView']]
+    dtype = {5121: np.uint8, 5123: np.uint16, 5125: np.uint32}[acc['componentType']]
+    assert not bv.get('byteStride') and 'sparse' not in acc
+    start = bv.get('byteOffset', 0) + acc.get('byteOffset', 0)
+    data = values.astype(dtype).tobytes()
+    glb.bin[start : start + len(data)] = data
+
+
+def _radial_grid(theta, y, rho, t_bins, y_bins, reduce=np.max):
+    """Rayon (autour de l'axe vertical de la tête) par case angle × hauteur, cases vides comblées
+    par la plus proche."""
+    g = np.full((len(t_bins) - 1, len(y_bins) - 1), np.nan)
+    ti = np.clip(np.digitize(theta, t_bins) - 1, 0, len(t_bins) - 2)
+    yi = np.clip(np.digitize(y, y_bins) - 1, 0, len(y_bins) - 2)
+    for a_, b_ in set(zip(ti.tolist(), yi.tolist())):
+        g[a_, b_] = reduce(rho[(ti == a_) & (yi == b_)])
+    known = np.argwhere(~np.isnan(g))
+    for a_, b_ in np.argwhere(np.isnan(g)):
+        da = np.minimum(np.abs(known[:, 0] - a_), len(t_bins) - 1 - np.abs(known[:, 0] - a_))
+        k = np.argmin(da * 3 + np.abs(known[:, 1] - b_))
+        g[a_, b_] = g[tuple(known[k])]
+
+    def at(t, yv):
+        a_ = np.clip(np.digitize(t, t_bins) - 1, 0, len(t_bins) - 2)
+        b_ = np.clip(np.digitize(yv, y_bins) - 1, 0, len(y_bins) - 2)
+        return g[a_, b_]
+
+    return at
+
+
+def ponytail(glb, tie_y=1.43, length=0.15, r_tie=0.02, r_max=0.045, gather=0.3, tight_y=1.54):
+    """Queue de cheval : les longues mèches (chaînes 05 à 12, y compris celles qui tombaient devant)
+    passent sous la chevelure du dessus, contre le crâne, jusqu'à un nœud à la base de l'arrière de
+    la tête ; la queue en sort et descend en suivant la nuque. Le bas de la chevelure est plaqué contre la tête (cheveux tirés). La frange
+    et le dessus de la tête ne bougent pas. Les mèches de la queue sont rattachées à la tête (plus de
+    ressorts) : rien ne flotte. Coordonnées du modèle d'origine (avant reshape_body)."""
+    import re
+
+    j = glb.json
+    mesh_i = next(i for i, m in enumerate(j['meshes']) if m['name'] == 'Hair')
+    node = next(n for n in j['nodes'] if n.get('mesh') == mesh_i)
+    joints = j['skins'][node['skin']]['joints']
+    names = [j['nodes'][x]['name'] for x in joints]
+    chain = np.array([int(m.group(1)) if (m := re.match(r'J_Sec_Hair\d+_(\d+)', n)) else 0 for n in names])
+    head_k = names.index('J_Bip_C_Head')
+    prim = next(p for p in j['meshes'][mesh_i]['primitives'] if j['materials'][p['material']]['name'] == 'Hair_00_HAIR')
+    a = prim['attributes']
+    P, N = glb.accessor(a['POSITION']), glb.accessor(a['NORMAL'])
+    J, Wt = glb.accessor(a['JOINTS_0']).astype(int), glb.accessor(a['WEIGHTS_0'])
+    dom = chain[J[np.arange(len(J)), Wt.argmax(1)]]
+    long_ = dom >= 5
+    cap = dom == 0
+
+    cz = -0.03  # axe vertical de la tête (x = 0, z = cz)
+    cyl = lambda Q_: (np.arctan2(Q_[:, 0], -(Q_[:, 2] - cz)), np.hypot(Q_[:, 0], Q_[:, 2] - cz))
+    theta, rho = cyl(P)
+    t_bins = np.linspace(-np.pi, np.pi, 37)
+    y_bins = np.arange(1.30, 1.66, 0.02)
+    # crâne (couche intérieure des cheveux et peau du visage) : surface sur laquelle on plaque les cheveux
+    inner_pts = [primitive(glb, 'Body', 'HairBack_00_HAIR')['pos'], primitive(glb, 'Face', 'Face_00_SKIN')['pos']]
+    ip = np.concatenate(inner_pts)
+    it, ir = cyl(ip)
+    inner = _radial_grid(it, ip[:, 1], ir, t_bins, y_bins)
+
+    Q = P.copy()
+    # 0) bas de la chevelure plaqué contre la tête (sauf la frange, devant)
+    tc = cap & (P[:, 1] < tight_y) & (np.abs(theta) < np.radians(125))
+    w = np.clip((tight_y - P[tc, 1]) / 0.06, 0, 1) * np.clip((np.radians(125) - np.abs(theta[tc])) / np.radians(25), 0, 1)
+    target = inner(theta[tc], P[tc, 1]) + 0.007
+    new_r = np.where(rho[tc] > target, rho[tc] - w * 0.85 * (rho[tc] - target), rho[tc])
+    Q[tc, 0] = np.sin(theta[tc]) * new_r
+    Q[tc, 2] = cz - np.cos(theta[tc]) * new_r
+    # nœud à la base de l'arrière de la tête, sous le bord de la chevelure
+    T = np.array([0.0, tie_y, cz - inner(np.array([0.0]), np.array([tie_y]))[0] - 0.004 - r_tie])
+
+    # position le long de chaque mèche (0 à la racine, 1 à la pointe) et épaisseur propre de la mèche
+    t = np.zeros(len(P))
+    layer = np.zeros(len(P))
+    for c in range(5, 13):
+        sel = dom == c
+        y0, y1 = P[sel, 1].max(), P[sel, 1].min()
+        t[sel] = (y0 - P[sel, 1]) / (y0 - y1)
+        tb = np.round(t[sel] * 20)
+        r_s = rho[sel]
+        med = np.zeros_like(r_s)
+        for b in np.unique(tb):
+            med[tb == b] = np.median(r_s[tb == b])
+        layer[sel] = np.clip(r_s - med, -0.012, 0.012)
+    phi = np.clip(theta * 1.15, -np.pi * 0.97, np.pi * 0.97)  # les mèches font le tour de la queue
+    ring = lambda f, r: np.stack([np.sin(f) * r, np.zeros_like(f), -np.cos(f) * r], -1)
+
+    # 1) des racines au nœud : les mèches passent sous la chevelure, contre le crâne
+    g = long_ & (t < gather)
+    u = t[g] / gather
+    e = u * u * (3 - 2 * u)
+    end = T + ring(phi[g], r_tie + layer[g] * 0.3)
+    th1, _ = cyl(end)
+    th = theta[g] + (th1 - theta[g]) * e
+    yy = P[g, 1] + (tie_y - P[g, 1]) * e
+    rh = inner(th, yy) + 0.003 + np.maximum(layer[g], 0) * 0.3
+    on_head = np.stack([np.sin(th) * rh, yy, cz - np.cos(th) * rh], -1)
+    k = np.clip((e - 0.75) / 0.25, 0, 1)[:, None]
+    Q[g] = on_head * (1 - k) + end * k
+    # 2) la queue : elle descend en suivant l'arrière de la tête puis la nuque, sans les traverser
+    q = long_ & (t >= gather)
+    s = (t[q] - gather) / (1 - gather)
+    r = np.where(s < 0.35, r_tie + (r_max - r_tie) * np.sin(np.clip(s / 0.35, 0, 1) * np.pi / 2), r_max * (1 - 0.55 * np.clip((s - 0.35) / 0.65, 0, 1) ** 1.6))
+    ay = tie_y - length * s
+    # arrière du corps (tête resserrée, cou, dos) à chaque hauteur, au milieu
+    body_pts = np.concatenate([Q[cap], ip, primitive(glb, 'Body', 'Body_00_SKIN')['pos'], primitive(glb, 'Body', 'Tops_01_CLOTH')['pos']])
+    mid = np.abs(body_pts[:, 0]) < 0.05
+    yb = np.arange(tie_y - length - 0.04, tie_y + 0.02, 0.01)
+    back_z = np.array([body_pts[m_, 2].min() if (m_ := mid & (np.abs(body_pts[:, 1] - v) < 0.01)).any() else np.nan for v in yb])
+    known = ~np.isnan(back_z)
+    back_z = np.interp(yb, yb[known], back_z[known])
+    # la queue reste plaquée : un peu plus de la moitié de son épaisseur dépasse du corps
+    hug = np.interp(ay, yb, back_z) - 0.55 * r
+    blend = np.clip(s / 0.3, 0, 1) ** 2 * (3 - 2 * np.clip(s / 0.3, 0, 1))
+    az = T[2] + (hug - T[2]) * blend
+    axis = np.stack([np.zeros_like(s), ay, az], -1)
+    Q[q] = axis + ring(phi[q], r + layer[q] * 0.4)
+
+    # normales : tournées du même angle que les mèches autour de l'axe vertical
+    rot = np.zeros(len(P))
+    rot[g] = th - theta[g]
+    rot[q] = phi[q] - theta[q]
+    c_, s_ = np.cos(rot), np.sin(rot)
+    N2 = N.copy()
+    N2[:, 0] = c_ * N[:, 0] + s_ * N[:, 2]
+    N2[:, 2] = -s_ * N[:, 0] + c_ * N[:, 2]
+    glb.write_accessor(a['POSITION'], Q)
+    glb.write_accessor(a['NORMAL'], N2 / np.maximum(np.linalg.norm(N2, axis=1, keepdims=True), 1e-9))
+    # mèches de la queue rattachées à la tête, sans ressort
+    J2, W2 = J.copy(), Wt.copy()
+    J2[long_] = [head_k, 0, 0, 0]
+    W2[long_] = [1, 0, 0, 0]
+    write_ints(glb, a['JOINTS_0'], J2)
+    glb.write_accessor(a['WEIGHTS_0'], W2)
+    sb = j['extensions'].get('VRMC_springBone', {})
+    tail_nodes = {joints[k_] for k_ in np.nonzero(chain >= 5)[0]}
+    sb['springs'] = [sp for sp in sb.get('springs', []) if sp['joints'][0]['node'] not in tail_nodes]
+    return T

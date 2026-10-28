@@ -58,7 +58,8 @@ export const whisperKey = (s: Settings) => sharedKey(s, s.stt.whisper.baseUrl, s
 export function sttEngineFor(s: Settings): 'browser' | 'whisper' | 'unavailable' {
   if (s.stt.engine === 'whisper') return 'whisper'
   if (browserSTTAvailable()) return 'browser'
-  return whisperKey(s) ? 'whisper' : 'unavailable'
+  // serveur sur le même site (édition événement, adresse « /api ») : pas de clé nécessaire
+  return whisperKey(s) || s.stt.whisper.baseUrl.startsWith('/') ? 'whisper' : 'unavailable'
 }
 
 export class BrowserSTT implements STTEngine {

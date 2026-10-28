@@ -228,6 +228,7 @@ export class ARSession {
     this.panel.visible = !this.overlay
     if (overlayRoot && this.overlay) {
       this.overlayRoot = overlayRoot
+      overlayRoot.classList.add('xr-overlay')
       overlayRoot.addEventListener('beforexrselect', blockSelectOnUI)
       this.attachTouch(overlayRoot)
     }
@@ -245,6 +246,7 @@ export class ARSession {
     this.hitTest?.cancel()
     this.hitTest = null
     this.overlayRoot?.removeEventListener('beforexrselect', blockSelectOnUI)
+    this.overlayRoot?.classList.remove('xr-overlay')
     if (this.overlayRoot) this.detachTouch(this.overlayRoot)
     this.overlayRoot = null
     this.touchPinch = null

@@ -1,0 +1,6 @@
+Déposez ici les documents de l'événement (PDF, texte, Markdown, HTML, images) sur lesquels l'assistante
+doit s'appuyer : programme, règlement, plan d'accès, informations pratiques… Le nom du fichier sert de
+titre dans les sources : nommez-les clairement, par exemple « Programme du hackathon.pdf » ou
+« Règlement du hackathon.pdf ».
+Ils sont pris en compte automatiquement quelques secondes après leur dépôt (ou avec : npm run index).
+Pour retirer un document, supprimez simplement le fichier.

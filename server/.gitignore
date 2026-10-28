@@ -1,0 +1,6 @@
+data/
+.env
+documents/*
+!documents/LISEZMOI.txt
+models/
+kokoro/

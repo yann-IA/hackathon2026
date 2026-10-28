@@ -64,16 +64,6 @@ export const DEFAULT_PROFILES: Record<string, AvatarProfile> = {
     openaiVoice: 'coral',
     openaiInstructions: 'Voix de femme d’une trentaine d’années, claire, posée et souriante, ton chaleureux et assuré.',
   },
-  camille: {
-    name: 'Camille',
-    prompt: `Tu es une militante syndicale d’une trentaine d’années, chaleureuse, pédagogue et combative, spécialiste de tout ce qui concerne la CGT : son histoire et ses valeurs, son organisation (syndicats, unions locales et départementales, fédérations comme la FAPT pour les activités postales et télécoms), les droits des salariés et le Code du travail, les conventions et accords collectifs, le CSE et les élections professionnelles, les négociations, la grève et les mobilisations, l’accompagnement des salariés (entretiens, sanctions, licenciements, santé au travail, égalité professionnelle) et l’adhésion. Tu expliques simplement, avec des exemples concrets, et quand une situation est précise ou juridique tu conseilles de vérifier les textes à jour et de contacter le syndicat ou l’union locale CGT la plus proche.\n${SHORT}`,
-    voiceHint: 'female',
-    browserVoice: '',
-    pitch: 1.0,
-    rate: 1.0,
-    openaiVoice: 'shimmer',
-    openaiInstructions: 'Voix de femme d’une trentaine d’années, chaleureuse, claire et convaincue, ton bienveillant et engagé.',
-  },
   dino: {
     name: 'Dino',
     prompt: `Tu es un petit dinosaure tout rond, joyeux et un peu gourmand. Tu es né il y a très, très longtemps mais tu es encore un enfant : tu t’émerveilles de tout, tu adores les fruits, les câlins et les histoires de volcans.\n${SHORT}`,
@@ -139,9 +129,11 @@ export function resetProfile(s: Settings): boolean {
 
 /* ---------------------- Choix d'une voix de l'appareil ---------------------- */
 
-const MALE = /henri|r[ée]my|paul|thomas|nicolas|claude|antoine|alain|j[ée]r[ôo]me|yves|fabrice|g[ée]rard|daniel|guillaume|mathieu|jean|\bmale\b|homme|\bman\b|guy|david|mark|george/i
+const MALE = /eddy|reed|rocko|grandpa|jacques|henri|r[ée]my|paul|thomas|nicolas|claude|antoine|alain|j[ée]r[ôo]me|yves|fabrice|g[ée]rard|daniel|guillaume|mathieu|jean|\bmale\b|homme|\bman\b|guy|david|mark|george/i
 const FEMALE = /denise|[ée]lo[ïi]se|vivienne|hortense|julie|am[ée]lie|audrey|aur[ée]lie|marie|c[ée]line|jeanne|female|femme|woman|google fran|zira|hazel|susan|samantha|victoria|karen|aria|jenny/i
 const QUALITY = /natural|online|neural|premium|enhanced|google/i
+// voix « fantaisie » d'Apple (Flo, Sandy, Shelley…) : féminines mais peu naturelles, en dernier recours
+const NOVELTY_FEMALE = /\bflo\b|sandy|shelley/i
 
 /**
  * Choisit une voix de l'appareil pour la langue demandée, en privilégiant le type de voix
@@ -156,8 +148,15 @@ export function pickVoice<T extends { name: string; lang: string }>(voices: T[],
     if (male.length) return best(male)
   }
   if (hint === 'female') {
-    const female = pool.filter((v) => FEMALE.test(v.name) && !MALE.test(v.name))
-    if (female.length) return best(female)
+    // une voix féminine de la langue (même d'une autre région, ex. Amélie en français du Canada)
+    // plutôt qu'une voix d'homme de la région exacte (Thomas, voix française par défaut des Mac)
+    const family = voices.filter((v) => v.lang.toLowerCase().startsWith(lang.slice(0, 2).toLowerCase()))
+    for (const list of [pool, family]) {
+      const female = list.filter((v) => FEMALE.test(v.name) && !MALE.test(v.name))
+      if (female.length) return best(female)
+    }
+    const novelty = pool.filter((v) => NOVELTY_FEMALE.test(v.name))
+    if (novelty.length) return novelty[0]
   }
   return pool.length ? best(pool) : null
 }

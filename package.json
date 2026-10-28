@@ -1,9 +1,9 @@
 {
-  "name": "companion",
+  "name": "hackathon2026",
   "private": true,
   "version": "0.1.0",
   "type": "module",
-  "description": "Compagnon IA vocal avec avatar 3D VRM (inspiré de moeru-ai/airi)",
+  "description": "Claire, avatar 3D d'accueil du Hackathon 2026 : questions sur l'événement à partir de ses documents (RAG), entièrement local sur un Mac",
   "scripts": {
     "dev": "vite --host",
     "build": "tsc --noEmit && vite build",
@@ -12,13 +12,19 @@
     "test": "vitest run",
     "fetch-avatar": "node scripts/fetch-avatar.mjs",
     "build-vrma": "node scripts/build-vrma.mjs",
-    "build-avatars": "node scripts/build-avatars.mjs"
+    "build-avatars": "node scripts/build-avatars.mjs",
+    "server": "node server/index.mjs",
+    "index": "node server/index.mjs --index-only",
+    "start": "npm run build && npm run server",
+    "resume": "node server/report.mjs",
+    "essai-mail": "node server/report.mjs --essai-mail"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.131.0",
     "@pixiv/three-vrm": "^3.5.5",
     "@pixiv/three-vrm-animation": "^3.5.5",
-    "three": "^0.186.1"
+    "three": "^0.186.1",
+    "unpdf": "^1.9.0"
   },
   "devDependencies": {
     "@types/node": "^26.6.4",

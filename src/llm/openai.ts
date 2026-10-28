@@ -23,7 +23,7 @@ export class OpenAICompatibleClient implements LLMClient {
     return this.opts.baseUrl.replace(/\/+$/, '') + path
   }
 
-  async streamChat({ system, messages, signal, onText }: ChatRequest): Promise<string> {
+  async streamChat({ system, messages, signal, onText, onMeta }: ChatRequest): Promise<string> {
     if (!this.opts.model) throw new LLMError('Aucun modèle choisi dans les réglages.')
     const key = `${this.opts.baseUrl}|${this.opts.model}`
     const quirks = QUIRKS.get(key) ?? initialQuirks(this.opts.baseUrl, this.opts.model)
@@ -38,7 +38,7 @@ export class OpenAICompatibleClient implements LLMClient {
       })
       if (res.ok && res.body) {
         QUIRKS.set(key, quirks)
-        return quirks.noStream ? this.readFull(res, onText) : this.readStream(res.body, onText)
+        return quirks.noStream ? this.readFull(res, onText) : this.readStream(res.body, onText, onMeta)
       }
       const error = await describeError(res)
       if (res.status !== 400 || attempt >= 4 || !adapt(quirks, error)) throw new LLMError(error)
@@ -58,17 +58,18 @@ export class OpenAICompatibleClient implements LLMClient {
     }
   }
 
-  private async readStream(body: ReadableStream<Uint8Array>, onText: (t: string) => void): Promise<string> {
+  private async readStream(body: ReadableStream<Uint8Array>, onText: (t: string) => void, onMeta?: ChatRequest['onMeta']): Promise<string> {
     let full = ''
     for await (const data of readSSE(body)) {
       if (data === '[DONE]') break
-      let json: { choices?: { delta?: { content?: string } }[]; error?: { message?: string } }
+      let json: { choices?: { delta?: { content?: string } }[]; error?: { message?: string }; edition?: Record<string, unknown> }
       try {
         json = JSON.parse(data)
       } catch {
         continue
       }
       if (json.error) throw new LLMError(json.error.message ?? 'Erreur du fournisseur')
+      if (json.edition) onMeta?.(json.edition)
       const delta = json.choices?.[0]?.delta?.content
       if (delta) {
         full += delta

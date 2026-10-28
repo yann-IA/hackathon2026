@@ -10,7 +10,8 @@
     <link rel="manifest" href="manifest.webmanifest" />
     <link rel="icon" href="icon.svg" type="image/svg+xml" />
     <link rel="apple-touch-icon" href="icon.svg" />
-    <title>Compagnon IA</title>
+    <title>Claire — Hackathon 2026</title>
+    <meta name="description" content="Claire répond à vos questions sur le Hackathon 2026 : programme, règlement, infos pratiques." />
   </head>
   <body>
     <canvas id="stage"></canvas>
@@ -24,32 +25,47 @@
     </div>
 
     <header class="topbar">
-      <div id="persona-name" class="persona-name">Aiko</div>
+      <div id="brand" class="brand">Hackathon 2026</div>
+      <div id="persona-name" class="persona-name">Claire</div>
       <div id="status" class="status" data-state="idle">En attente</div>
       <button id="ar-btn" class="ar-btn" hidden aria-label="Réalité augmentée" title="Voir l’avatar dans ta pièce (téléphone Android avec Chrome, casque Quest)">
         <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path fill="currentColor" d="M3 7.5A2.5 2.5 0 0 1 5.5 5h13A2.5 2.5 0 0 1 21 7.5v7a2.5 2.5 0 0 1-2.5 2.5h-3.2a2 2 0 0 1-1.7-.9l-1-1.5a.7.7 0 0 0-1.2 0l-1 1.5a2 2 0 0 1-1.7.9H5.5A2.5 2.5 0 0 1 3 14.5zm4.5 2a2 2 0 1 0 0 4 2 2 0 0 0 0-4zm9 0a2 2 0 1 0 0 4 2 2 0 0 0 0-4z"/></svg>
         <span>RA</span>
       </button>
-      <button id="gesture-btn" class="icon-btn" aria-label="Gestes" title="Gestes (salut, danse…)">
+      <button id="gesture-btn" hidden class="icon-btn" aria-label="Gestes" title="Gestes (salut, danse…)">
         <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path fill="currentColor" d="M21 7a1.5 1.5 0 0 0-3 0v4.5h-.5V4a1.5 1.5 0 0 0-3 0v7.5H14V2.5a1.5 1.5 0 0 0-3 0v9h-.5V5a1.5 1.5 0 0 0-3 0v10.2l-2.3-2.4a1.6 1.6 0 0 0-2.3 2.2l4.6 5A6 6 0 0 0 11.9 22H15a6 6 0 0 0 6-6z"/></svg>
       </button>
-      <button id="settings-btn" class="icon-btn" aria-label="Réglages" title="Réglages">
+      <button id="settings-btn" hidden class="icon-btn" aria-label="Réglages" title="Réglages">
         <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path fill="currentColor" d="M19.4 13a7.7 7.7 0 0 0 0-2l2.1-1.6-2-3.5-2.5 1a7.4 7.4 0 0 0-1.7-1L15 3.3h-4l-.4 2.6a7.4 7.4 0 0 0-1.7 1l-2.5-1-2 3.5L6.6 11a7.7 7.7 0 0 0 0 2l-2.1 1.6 2 3.5 2.5-1a7.4 7.4 0 0 0 1.7 1l.4 2.6h4l.4-2.6a7.4 7.4 0 0 0 1.7-1l2.5 1 2-3.5zM13 15.5a3.5 3.5 0 1 1 0-7 3.5 3.5 0 0 1 0 7z" transform="translate(-1 0)"/></svg>
       </button>
     </header>
 
     <div id="gesture-menu" class="gesture-menu" hidden></div>
 
+    <!-- Accueil (mode kiosque) : une question suggérée à la fois, qui change toute seule ;
+         caché après la première question -->
+    <section id="welcome" class="welcome">
+      <p id="welcome-text" class="welcome-text"></p>
+      <button id="suggestion" type="button" class="suggestion" aria-live="polite">
+        <span id="suggestion-text" class="suggestion-text"></span>
+        <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="currentColor" d="M3.4 20.4 21 12 3.4 3.6 3.4 10l12.6 2-12.6 2z"/></svg>
+      </button>
+      <div id="suggestion-dots" class="suggestion-dots" aria-hidden="true"></div>
+      <p id="privacy" class="privacy"></p>
+    </section>
+
     <section id="subtitles" class="subtitles" aria-live="polite">
       <p id="user-line" class="line user"></p>
       <p id="ai-line" class="line ai"></p>
+      <div id="thinking" class="thinking" hidden><span class="dots"><i></i><i></i><i></i></span><span id="thinking-text"></span></div>
+      <div id="sources" class="sources" hidden></div>
     </section>
 
     <div id="toast" class="toast" role="alert" hidden></div>
 
     <footer class="controls">
       <form id="text-form" class="text-form" autocomplete="off">
-        <input id="text-input" type="text" placeholder="Écrire un message…" enterkeyhint="send" />
+        <input id="text-input" type="text" placeholder="Écrivez votre question…" enterkeyhint="send" />
         <button type="submit" class="icon-btn" aria-label="Envoyer">
           <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path fill="currentColor" d="M3.4 20.4 21 12 3.4 3.6 3.4 10l12.6 2-12.6 2z"/></svg>
         </button>

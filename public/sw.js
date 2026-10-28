@@ -1,7 +1,7 @@
 // Service worker minimal : rend l'application installable et utilisable hors-ligne
 // (l'interface et les avatars déjà chargés sont mis en cache ; les appels aux API d'IA ne le sont jamais).
 // À changer quand un avatar fourni est modifié : sinon l'ancienne version reste en cache sur les appareils.
-const CACHE = 'companion-v5'
+const CACHE = 'hackathon2026-v1'
 
 self.addEventListener('install', () => self.skipWaiting())
 self.addEventListener('activate', (event) => {
