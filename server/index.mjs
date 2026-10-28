@@ -14,6 +14,7 @@ import { buildMessages, searchQuery } from './prompt.mjs'
 import { QuestionLog, TagStripper, plainAnswer } from './questions.mjs'
 import { DocumentIndex, ollamaEmbedder } from './rag.mjs'
 import { scheduleReports } from './report.mjs'
+import { Suggestions } from './suggestions.mjs'
 
 const TYPES = {
   '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8',
@@ -66,6 +67,8 @@ export async function createAssistantServer(overrides = {}, { log = console } = 
   const ttsLimit = new RateLimiter(cfg.limits.ttsPerMinute)
   const stats = { questions: 0, unanswered: 0, errors: 0, since: new Date().toISOString() }
   const questionLog = cfg.logQuestions ? new QuestionLog(cfg.questionsFile) : null
+  const suggestions = new Suggestions({ index, dataDir: cfg.dataDir, llm: cfg.llm, chat: overrides.streamChat ?? streamChat, gate, assistant: cfg.assistant, log })
+  await suggestions.load()
 
   async function chat(req, res) {
     const key = clientKey(req)
@@ -100,7 +103,7 @@ export async function createAssistantServer(overrides = {}, { log = console } = 
         log.warn(`Recherche documentaire impossible : ${e.message}`)
       }
       const seen = new Set()
-      const sources = passages.filter((p) => !seen.has(p.file) && seen.add(p.file)).map((p) => ({ title: p.title, file: p.file, page: p.page, url: `/docs/${encodeURIComponent(p.file)}` }))
+      const sources = passages.filter((p) => !seen.has(p.file) && seen.add(p.file)).map((p) => ({ title: p.title, page: p.page, ...(cfg.docsDownload ? { file: p.file, url: `/docs/${encodeURIComponent(p.file)}` } : {}) }))
       event({ edition: { sources } })
       const messages = buildMessages(body.messages, passages, cfg.limits, cfg.assistant)
       if (!messages) {
@@ -230,8 +233,9 @@ export async function createAssistantServer(overrides = {}, { log = console } = 
       if (req.method === 'POST' && url.pathname === '/api/audio/transcriptions') return await transcription(req, res)
       if (req.method !== 'GET' && req.method !== 'HEAD') return apiError(res, 405, 'Méthode non autorisée')
       if (url.pathname === '/api/health') return send(res, 200, { ok: true, model: cfg.llm.model, documents: index.list().length, passages: index.size, waiting: gate.waiting.length, running: gate.running, ...stats })
-      if (url.pathname === '/api/documents') return send(res, 200, index.list().map(({ file, title }) => ({ title, url: `/docs/${encodeURIComponent(file)}` })))
-      if (url.pathname.startsWith('/docs/')) {
+      if (url.pathname === '/api/suggestions') return send(res, 200, { questions: suggestions.pick(12) }, { 'Cache-Control': 'no-store' })
+      if (url.pathname === '/api/documents') return send(res, 200, index.list().map(({ file, title }) => ({ title, ...(cfg.docsDownload ? { url: `/docs/${encodeURIComponent(file)}` } : {}) })))
+      if (url.pathname.startsWith('/docs/') && cfg.docsDownload) {
         const file = safeJoin(cfg.documents, url.pathname.slice(6))
         if (file && (await serveFile(res, file, 'public, max-age=300'))) return
         return send(res, 404, 'Document introuvable')
@@ -249,16 +253,16 @@ export async function createAssistantServer(overrides = {}, { log = console } = 
     }
   })
 
-  return { server, index, gate, cfg, stats }
+  return { server, index, gate, cfg, stats, suggestions }
 }
 
 /** Réindexe quand des documents sont ajoutés, modifiés ou supprimés (après 3 s de calme). */
-function watchDocuments(index, log) {
+function watchDocuments(index, log, onSynced) {
   let timer = null
   try {
     watch(index.documents, () => {
       clearTimeout(timer)
-      timer = setTimeout(() => index.sync().catch((e) => log.warn(`Indexation : ${e.message}`)), 3000)
+      timer = setTimeout(() => index.sync().then(onSynced).catch((e) => log.warn(`Indexation : ${e.message}`)), 3000)
     })
   } catch (e) {
     log.warn(`Surveillance du dossier impossible : ${e.message}`)
@@ -274,7 +278,7 @@ const isMain = (() => {
   }
 })()
 if (isMain) {
-  const { server, index, cfg } = await createAssistantServer()
+  const { server, index, cfg, suggestions } = await createAssistantServer()
   if (process.argv.includes('--index-only')) {
     await index.sync()
     console.info(`Base documentaire : ${index.list().length} document(s), ${index.size} passage(s).`)
@@ -286,7 +290,8 @@ if (isMain) {
   index
     .sync()
     .then(() => console.info(`Base documentaire : ${index.list().length} document(s), ${index.size} passage(s).`))
+    .then(() => suggestions.refresh()) // questions d'exemple pour l'accueil, tirées des documents
     .catch((e) => console.warn(`Indexation impossible (Ollama est-il lancé ?) : ${e.message}`))
-  watchDocuments(index, console)
+  watchDocuments(index, console, () => suggestions.refresh())
   scheduleReports(cfg, { log: console })
 }

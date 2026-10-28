@@ -551,4 +551,5 @@ body[data-state='thinking'] .line.ai:empty + .thinking { margin-top: 0; }
 }
 .sources[hidden] { display: none; }
 .sources span { color: var(--muted); }
-.sources a { color: #ffb3b8; text-decoration: underline; }
+.sources a { color: #ffc58f; text-decoration: underline; }
+.sources .source:not(a) { color: #ffc58f; }

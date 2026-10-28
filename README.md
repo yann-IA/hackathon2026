@@ -48,8 +48,12 @@ Les **10 sujets du hackathon** sont déjà fournis (`server/documents/Sujets du 
 Ajoutez les autres documents dans **`server/documents`** (`open ~/Hackathon2026/server/documents`) :
 programme, règlement, plan d'accès… Ils sont indexés automatiquement quelques secondes après leur arrivée ; pour en
 retirer un, supprimez le fichier. Le nom du fichier sert de titre dans les sources affichées sous chaque
-réponse. Formats lus : PDF (y compris scannés), texte, Markdown, HTML, images. Ces documents sont
-publics (consultables depuis les sources).
+réponse. Formats lus : PDF (y compris scannés), texte, Markdown, HTML, images. Les sources sont citées
+sous chaque réponse, mais les documents ne sont pas téléchargeables (ils sont internes et l'adresse de
+Claire est publique) ; pour l'autoriser : `DOCS_DOWNLOAD=true` dans `server/.env`.
+
+Les **questions d'exemple** de l'accueil se renouvellent seules : pour chaque document, le modèle du Mac
+propose deux questions dont la réponse s'y trouve, mêlées à celles de `src/edition.ts`.
 
 Claire ne répond qu'à partir de ces documents : quand ils ne contiennent pas la réponse, elle le dit et
 oriente vers l'équipe d'organisation, sans rien inventer.

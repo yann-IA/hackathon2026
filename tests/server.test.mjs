@@ -14,6 +14,7 @@ import { parseEnv } from '../server/config.mjs'
 import { QuestionLog, TagStripper, plainAnswer } from '../server/questions.mjs'
 import { buildReport, groupQuestions, lastSlot } from '../server/report.mjs'
 import { sendMail } from '../server/mail.mjs'
+import { Suggestions, parseQuestions } from '../server/suggestions.mjs'
 
 /** Fausses empreintes : sac de mots haché (suffisant pour tester le classement). */
 const fakeEmbed = async (texts) =>
@@ -152,7 +153,7 @@ describe('parcours complet', () => {
     const events = text.split('\n\n').filter((l) => l.startsWith('data: ')).map((l) => l.slice(6))
     expect(events.at(-1)).toBe('[DONE]')
     const json = events.slice(0, -1).map((e) => JSON.parse(e))
-    expect(json.find((e) => e.edition?.sources)?.edition.sources[0]).toMatchObject({ title: 'Elections CAP', url: '/docs/Elections%20CAP.txt' })
+    expect(json.find((e) => e.edition?.sources)?.edition.sources[0]).toEqual({ title: 'Elections CAP', page: 1 }) // sans lien : téléchargement coupé par défaut
     expect(json.map((e) => e.choices?.[0]?.delta?.content ?? '').join('')).toContain('1er au 8 décembre')
   })
 
@@ -183,8 +184,8 @@ describe('parcours complet', () => {
     expect(await res.text()).toBe('MP3:ff_siwis:Bonjour')
   })
 
-  it('sert les documents sources mais pas les autres fichiers', async () => {
-    expect((await fetch(`${base}/docs/Elections%20CAP.txt`)).status).toBe(200)
+  it('ne sert pas les documents par défaut (documents internes), ni les autres fichiers', async () => {
+    expect((await fetch(`${base}/docs/Elections%20CAP.txt`)).status).toBe(404)
     expect((await fetch(`${base}/docs/..%2F..%2Fetc%2Fpasswd`)).status).toBe(404)
     const health = await (await fetch(`${base}/api/health`)).json()
     expect(health).toMatchObject({ ok: true, documents: 1 })
@@ -302,5 +303,40 @@ describe('questions sans réponse et résumé', () => {
     expect(data).toContain(`Subject: =?UTF-8?B?${Buffer.from('Résumé des questions').toString('base64')}?=`)
     const body = data.split('\n\n').slice(1).join('').replace(/\n/g, '')
     expect(Buffer.from(body, 'base64').toString('utf8')).toBe('Élections : 3 questions.\n')
+  })
+})
+
+describe('questions d’exemple tirées des documents', () => {
+  it('ne garde que de vraies questions courtes', () => {
+    expect(parseQuestions('1. Où se déroule le hackathon ?\n- Qui fait partie du jury?\nVoici mes propositions :\n« Quand commence la remise des prix ? »\n2. Où se déroule le hackathon ?', 3)).toEqual([
+      'Où se déroule le hackathon ?',
+      'Qui fait partie du jury ?',
+      'Quand commence la remise des prix ?',
+    ])
+  })
+
+  it('propose des questions pour chaque document, refaites seulement s’il change', async () => {
+    const dir = await mkdtemp(join(tmpdir(), 'assistante-sugg-'))
+    await writeFile(join(dir, 'Programme.txt'), 'Ouverture à 9 h, pitchs à 16 h, remise des prix à 18 h.')
+    await writeFile(join(dir, 'Jury.txt'), 'Le jury réunit cinq personnes de la direction technique.')
+    const index = new DocumentIndex({ documents: dir, dataDir: join(dir, '.data'), embed: fakeEmbed, chunkChars: 900, overlap: 150, log: quiet })
+    await index.sync()
+    let calls = 0
+    const chat = async function* (_llm, messages) {
+      calls++
+      const doc = messages[1].content.includes('jury') ? 'Jury' : 'Programme'
+      yield doc === 'Jury' ? 'Qui compose le jury ?\nCombien de membres dans le jury ?' : 'À quelle heure sont les pitchs ?\nQuand a lieu la remise des prix ?'
+    }
+    const s = new Suggestions({ index, dataDir: join(dir, '.data'), llm: {}, chat, gate: new Gate(1, 5), assistant: { name: 'Claire', event: 'Hackathon 2026' }, log: quiet })
+    await s.refresh()
+    expect(calls).toBe(2)
+    const picked = s.pick(12)
+    expect(picked).toHaveLength(4)
+    expect(picked.slice(0, 2).sort()).not.toEqual(picked.slice(2).sort()) // un document puis l'autre, tour à tour
+    const again = new Suggestions({ index, dataDir: join(dir, '.data'), llm: {}, chat, gate: new Gate(1, 5), assistant: { name: 'Claire', event: 'Hackathon 2026' }, log: quiet })
+    await again.load()
+    await again.refresh()
+    expect(calls).toBe(2) // rien n'a changé : pas de nouvel appel au modèle
+    await rm(dir, { recursive: true, force: true })
   })
 })

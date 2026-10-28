@@ -39,6 +39,8 @@ export function loadConfig(overrides = {}) {
     questionsFile: resolve(here, '..', env.QUESTIONS_FILE || 'Questions.csv'),
     reportsDir: resolve(here, '..', env.REPORTS_DIR || 'Résumés'),
     logQuestions: env.LOG_QUESTIONS !== 'false',
+    // téléchargement des documents depuis les sources : coupé par défaut (documents internes)
+    docsDownload: env.DOCS_DOWNLOAD === 'true',
     report: {
       email: env.REPORT_EMAIL || '', // destinataire(s), séparés par des virgules
       schedule: env.REPORT_SCHEDULE || 'quotidien', // quotidien, hebdomadaire ou jamais

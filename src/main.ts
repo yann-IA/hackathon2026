@@ -57,7 +57,7 @@ const thinkingEl = $('thinking')
 const sourcesEl = $('sources')
 interface Source {
   title: string
-  url: string
+  url?: string
   page?: number
 }
 
@@ -76,10 +76,14 @@ function showSources(list: Source[]): void {
   label.textContent = list.length > 1 ? 'Sources :' : 'Source :'
   sourcesEl.append(label)
   for (const s of list) {
-    const a = document.createElement('a')
-    a.href = s.url
-    a.target = '_blank'
-    a.rel = 'noopener'
+    // sans lien quand le serveur ne permet pas de télécharger les documents (DOCS_DOWNLOAD)
+    const a = document.createElement(s.url ? 'a' : 'span')
+    if (a instanceof HTMLAnchorElement && s.url) {
+      a.href = s.url
+      a.target = '_blank'
+      a.rel = 'noopener'
+    }
+    a.className = 'source'
     a.textContent = s.page ? `${s.title} (p. ${s.page})` : s.title
     sourcesEl.append(a)
   }
@@ -663,26 +667,44 @@ void loadAvatar(settings.avatar.current).then(() => {
 $('brand').textContent = EDITION.event
 $('welcome-text').textContent = EDITION.welcome
 $('privacy').textContent = EDITION.privacy
+let suggestions = [...EDITION.suggestions]
 let suggestionIndex = 0
+let suggestionDots: HTMLElement[] = []
 const suggestionText = $('suggestion-text')
-const suggestionDots = EDITION.suggestions.map(() => document.createElement('i'))
-$('suggestion-dots').append(...suggestionDots)
 const showSuggestion = (i: number) => {
   suggestionIndex = i
-  suggestionText.textContent = EDITION.suggestions[i]
+  suggestionText.textContent = suggestions[i]
   suggestionText.classList.remove('in')
   void suggestionText.offsetWidth // relance l'animation d'apparition
   suggestionText.classList.add('in')
   suggestionDots.forEach((d, j) => d.classList.toggle('on', j === i))
 }
-showSuggestion(0)
+const setSuggestions = (list: string[]) => {
+  suggestions = list
+  suggestionDots = list.map(() => document.createElement('i'))
+  $('suggestion-dots').replaceChildren(...suggestionDots)
+  showSuggestion(0)
+}
+setSuggestions(suggestions)
+// questions tirées des documents du serveur (voir server/suggestions.mjs), mêlées aux questions de base
+fetch('/api/suggestions')
+  .then((r) => (r.ok ? r.json() : null))
+  .then((data: { questions?: string[] } | null) => {
+    const fromDocs = (data?.questions ?? []).filter((q) => typeof q === 'string' && q.trim())
+    if (!fromDocs.length) return
+    // la première reste en tête ; les autres sont mêlées aux questions tirées des documents
+    const [first, ...rest] = EDITION.suggestions
+    const mixed = [...rest, ...fromDocs].filter((q, i, a) => a.indexOf(q) === i).sort(() => Math.random() - 0.5)
+    setSuggestions([first, ...mixed.filter((q) => q !== first)].slice(0, 16))
+  })
+  .catch(() => {})
 setInterval(() => {
   if (document.hidden || $('welcome').hidden || (document.body.dataset.state ?? 'idle') !== 'idle') return
-  showSuggestion((suggestionIndex + 1) % EDITION.suggestions.length)
+  showSuggestion((suggestionIndex + 1) % suggestions.length)
 }, 4500)
 $('suggestion').addEventListener('click', () => {
   void unlockAudio()
-  void convo.send(EDITION.suggestions[suggestionIndex])
+  void convo.send(suggestions[suggestionIndex])
 })
 if (convo.lastExchange) $('welcome').hidden = true
 void offerVault // le coffre à clés n'existe pas dans cette édition (aucune clé à saisir)

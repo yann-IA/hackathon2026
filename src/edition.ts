@@ -11,7 +11,24 @@ export const EDITION = {
   event: 'Hackathon 2026',
   welcome: 'Bonjour, je suis Claire ! Posez-moi vos questions sur le Hackathon 2026 et ses 10 sujets.',
   privacy: 'Vos questions sont enregistrées de façon anonyme pour améliorer les réponses : n’y indiquez pas votre nom.',
-  suggestions: ['Quels sont les sujets du hackathon ?', 'C’est quoi le sujet WIFIA ?', 'Quel sujet parle des vols de cuivre ?', 'Qu’est-ce que ReUseRéseaux ?', 'Que vise le sujet EnergiPulse ?', 'Quel sujet concerne les Livebox ?'],
+  // La première reste toujours en tête ; les autres défilent, mêlées aux questions que le modèle tire
+  // des documents déposés sur le Mac (voir server/suggestions.mjs).
+  suggestions: [
+    'Quels sont les sujets du hackathon ?',
+    'Comment venir depuis la gare de Poitiers ?',
+    'À quelle heure commence le hackathon ?',
+    'Combien de temps dure le pitch ?',
+    'Quels sont les livrables attendus ?',
+    'Sur quels critères le jury évalue-t-il ?',
+    'C’est quoi le Skill Center ?',
+    'Qui est le DIAM de mon sujet ?',
+    'Que faut-il apporter ?',
+    'Qui contacter pendant l’événement ?',
+    'Quels hashtags utiliser sur LinkedIn ?',
+    'Quel problème veut résoudre WIFIA ?',
+    'Quel sujet parle des vols de cuivre ?',
+    'Que vise le projet Loi de Finances ?',
+  ],
   thinking: 'Claire cherche dans les documents…',
 }
 
